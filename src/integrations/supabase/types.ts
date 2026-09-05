@@ -14,7 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      careers: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          name: string
+          season: number
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          name: string
+          season?: number
+          state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          name?: string
+          season?: number
+          state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      db_sets: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          kind: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          kind: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          kind?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tracks: {
+        Row: {
+          ac_approx_id: string
+          ac_exact_id: string
+          city: string
+          country: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          ac_approx_id?: string
+          ac_exact_id?: string
+          city?: string
+          country: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          ac_approx_id?: string
+          ac_exact_id?: string
+          city?: string
+          country?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
