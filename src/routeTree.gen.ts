@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedCareersIndexRouteImport } from './routes/_authenticated/careers/index'
 import { Route as AuthenticatedCareersCareerIdIndexRouteImport } from './routes/_authenticated/careers/$careerId/index'
+import { Route as AuthenticatedCareersCareerIdPreseasonRouteImport } from './routes/_authenticated/careers/$careerId/preseason'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -41,17 +42,25 @@ const AuthenticatedCareersCareerIdIndexRoute =
     path: '/careers/$careerId/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCareersCareerIdPreseasonRoute =
+  AuthenticatedCareersCareerIdPreseasonRouteImport.update({
+    id: '/careers/$careerId/preseason',
+    path: '/careers/$careerId/preseason',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/careers/': typeof AuthenticatedCareersIndexRoute
+  '/careers/$careerId/preseason': typeof AuthenticatedCareersCareerIdPreseasonRoute
   '/careers/$careerId/': typeof AuthenticatedCareersCareerIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/careers': typeof AuthenticatedCareersIndexRoute
+  '/careers/$careerId/preseason': typeof AuthenticatedCareersCareerIdPreseasonRoute
   '/careers/$careerId': typeof AuthenticatedCareersCareerIdIndexRoute
 }
 export interface FileRoutesById {
@@ -60,19 +69,31 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/careers/': typeof AuthenticatedCareersIndexRoute
+  '/_authenticated/careers/$careerId/preseason': typeof AuthenticatedCareersCareerIdPreseasonRoute
   '/_authenticated/careers/$careerId/': typeof AuthenticatedCareersCareerIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/careers/' | '/careers/$careerId/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/careers/'
+    | '/careers/$careerId/preseason'
+    | '/careers/$careerId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/careers' | '/careers/$careerId'
+  to:
+    | '/'
+    | '/auth'
+    | '/careers'
+    | '/careers/$careerId/preseason'
+    | '/careers/$careerId'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/careers/'
+    | '/_authenticated/careers/$careerId/preseason'
     | '/_authenticated/careers/$careerId/'
   fileRoutesById: FileRoutesById
 }
@@ -119,16 +140,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCareersCareerIdIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/careers/$careerId/preseason': {
+      id: '/_authenticated/careers/$careerId/preseason'
+      path: '/careers/$careerId/preseason'
+      fullPath: '/careers/$careerId/preseason'
+      preLoaderRoute: typeof AuthenticatedCareersCareerIdPreseasonRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCareersIndexRoute: typeof AuthenticatedCareersIndexRoute
+  AuthenticatedCareersCareerIdPreseasonRoute: typeof AuthenticatedCareersCareerIdPreseasonRoute
   AuthenticatedCareersCareerIdIndexRoute: typeof AuthenticatedCareersCareerIdIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCareersIndexRoute: AuthenticatedCareersIndexRoute,
+  AuthenticatedCareersCareerIdPreseasonRoute:
+    AuthenticatedCareersCareerIdPreseasonRoute,
   AuthenticatedCareersCareerIdIndexRoute:
     AuthenticatedCareersCareerIdIndexRoute,
 }
