@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788597849030,
+      "tag": "0000_create_myteam_career_schema",
+      "breakpoints": true
+    }
+  ]
+}
