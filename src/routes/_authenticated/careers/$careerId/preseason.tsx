@@ -465,8 +465,9 @@ function PhaseOne({
               variant="ghost"
               onClick={async () => {
                 for (const t of draft.db.tracks) {
+                  const known = (library ?? []).some((l) => l.id === t.id);
                   await upsertTrack.mutateAsync({
-                    id: (library ?? []).some((l) => l.id === t.id) ? t.id : undefined,
+                    ...(known ? { id: t.id } : {}),
                     country: t.country,
                     city: t.city,
                     ac_exact_id: t.acExactId,
