@@ -726,7 +726,8 @@ function PhaseThree({
       const pool = unlocked.slice();
       const picked: string[] = [];
       while (picked.length < 8 && pool.length) {
-        picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0].id);
+        const [taken] = pool.splice(Math.floor(Math.random() * pool.length), 1);
+        if (taken) picked.push(taken.id);
       }
       setOffers(picked);
     }
