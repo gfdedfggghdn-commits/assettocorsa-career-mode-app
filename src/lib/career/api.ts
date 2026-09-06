@@ -77,8 +77,13 @@ export function useSaveCareer(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (patch: { data?: CareerData; state?: CareerState; season?: number; name?: string }) => {
-      const payload: Record<string, unknown> = {};
-      if (patch.data) payload.data = patch.data;
+      const payload: {
+        data?: never;
+        state?: string;
+        season?: number;
+        name?: string;
+      } = {};
+      if (patch.data) payload.data = patch.data as never;
       if (patch.state) payload.state = patch.state;
       if (patch.season) payload.season = patch.season;
       if (patch.name) payload.name = patch.name;

@@ -37,7 +37,7 @@ export function EntityEditor<T extends { id: string }>({
 }: Props<T>) {
   const update = (index: number, key: string, value: unknown) => {
     const next = rows.slice();
-    next[index] = { ...next[index], [key]: value };
+    next[index] = { ...(next[index] as T), [key]: value } as T;
     onChange(next);
   };
 

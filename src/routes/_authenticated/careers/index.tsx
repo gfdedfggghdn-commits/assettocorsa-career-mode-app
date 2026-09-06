@@ -48,7 +48,10 @@ function CareersPage() {
   }
 
   async function startNew() {
-    if (!name.trim()) return toast.error("Give your career a name first.");
+    if (!name.trim()) {
+      toast.error("Give your career a name first.");
+      return;
+    }
     const id = await create.mutateAsync(name.trim());
     navigate({ to: "/careers/$careerId/preseason", params: { careerId: id } });
   }

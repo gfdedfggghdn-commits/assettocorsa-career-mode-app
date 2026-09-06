@@ -72,8 +72,8 @@ export function performanceScore(season: SeasonRecord | undefined): number | nul
   if (mine == null) return null;
   const values = Object.values(averages).sort((a, b) => a - b);
   if (values.length < 2) return 50;
-  const best = values[0];
-  const worst = values[values.length - 1];
+  const best = values[0]!;
+  const worst = values[values.length - 1]!;
   if (worst === best) return 50;
   return Math.round(((worst - mine) / (worst - best)) * 100);
 }
