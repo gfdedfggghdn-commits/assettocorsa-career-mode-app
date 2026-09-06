@@ -46,7 +46,10 @@ export function SetBar<T>({ kind, rows, onLoad }: Props<T>) {
           <Input placeholder="Set name" value={name} onChange={(e) => setName(e.target.value)} />
           <Button
             onClick={async () => {
-              if (!name.trim()) return toast.error("Name the set first.");
+              if (!name.trim()) {
+                toast.error("Name the set first.");
+                return;
+              }
               await save.mutateAsync({ kind, name: name.trim(), data: rows as unknown[] });
               setName("");
               toast.success("Set saved.");

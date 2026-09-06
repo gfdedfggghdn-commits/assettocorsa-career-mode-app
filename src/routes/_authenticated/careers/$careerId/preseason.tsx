@@ -157,14 +157,22 @@ function Preseason() {
         {phase < 4 ? (
           <Button
             onClick={async () => {
-              if (phase === 2 && !draft.team.name.trim()) return toast.error("Name your team.");
-              if (phase === 2 && isFirstSeason && !draft.team.startingTierId)
-                return toast.error("Pick what your team starts as.");
-              if (phase === 3 && !pickedPowerUnit) return toast.error("Select a power unit supplier.");
-              if (phase === 3 && isFirstSeason && !draft.pendingMajorSponsorId)
-                return toast.error("Select a major sponsor.");
-              if (phase === 3 && isFirstSeason && !draft.pendingTeamMateId)
-                return toast.error("Select a team mate.");
+              const problem =
+                phase === 2 && !draft.team.name.trim()
+                  ? "Name your team."
+                  : phase === 2 && isFirstSeason && !draft.team.startingTierId
+                    ? "Pick what your team starts as."
+                    : phase === 3 && !pickedPowerUnit
+                      ? "Select a power unit supplier."
+                      : phase === 3 && isFirstSeason && !draft.pendingMajorSponsorId
+                        ? "Select a major sponsor."
+                        : phase === 3 && isFirstSeason && !draft.pendingTeamMateId
+                          ? "Select a team mate."
+                          : null;
+              if (problem) {
+                toast.error(problem);
+                return;
+              }
               await persist();
               setPhase(phase + 1);
             }}
@@ -174,7 +182,10 @@ function Preseason() {
         ) : (
           <Button
             onClick={async () => {
-              if (calendar.length === 0) return toast.error("Add at least one race to the calendar.");
+              if (calendar.length === 0) {
+                toast.error("Add at least one race to the calendar.");
+                return;
+              }
               const finalData = startSeason(draft, career.season, calendar, windowMode, pickedPowerUnit);
               await save.mutateAsync({
                 data: finalData,
@@ -454,8 +465,9 @@ function PhaseOne({
               variant="ghost"
               onClick={async () => {
                 for (const t of draft.db.tracks) {
+                  const known = (library ?? []).some((l) => l.id === t.id);
                   await upsertTrack.mutateAsync({
-                    id: (library ?? []).some((l) => l.id === t.id) ? t.id : undefined,
+                    ...(known ? { id: t.id } : {}),
                     country: t.country,
                     city: t.city,
                     ac_exact_id: t.acExactId,
@@ -714,7 +726,8 @@ function PhaseThree({
       const pool = unlocked.slice();
       const picked: string[] = [];
       while (picked.length < 8 && pool.length) {
-        picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0].id);
+        const [taken] = pool.splice(Math.floor(Math.random() * pool.length), 1);
+        if (taken) picked.push(taken.id);
       }
       setOffers(picked);
     }

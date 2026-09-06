@@ -14,6 +14,8 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedCareersIndexRouteImport } from './routes/_authenticated/careers/index'
 import { Route as AuthenticatedCareersCareerIdIndexRouteImport } from './routes/_authenticated/careers/$careerId/index'
+import { Route as AuthenticatedCareersCareerIdCompleteRouteImport } from './routes/_authenticated/careers/$careerId/complete'
+import { Route as AuthenticatedCareersCareerIdDashboardRouteImport } from './routes/_authenticated/careers/$careerId/dashboard'
 import { Route as AuthenticatedCareersCareerIdPreseasonRouteImport } from './routes/_authenticated/careers/$careerId/preseason'
 
 const IndexRoute = IndexRouteImport.update({
@@ -42,6 +44,18 @@ const AuthenticatedCareersCareerIdIndexRoute =
     path: '/careers/$careerId/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCareersCareerIdCompleteRoute =
+  AuthenticatedCareersCareerIdCompleteRouteImport.update({
+    id: '/careers/$careerId/complete',
+    path: '/careers/$careerId/complete',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCareersCareerIdDashboardRoute =
+  AuthenticatedCareersCareerIdDashboardRouteImport.update({
+    id: '/careers/$careerId/dashboard',
+    path: '/careers/$careerId/dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCareersCareerIdPreseasonRoute =
   AuthenticatedCareersCareerIdPreseasonRouteImport.update({
     id: '/careers/$careerId/preseason',
@@ -53,6 +67,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/careers/': typeof AuthenticatedCareersIndexRoute
+  '/careers/$careerId/complete': typeof AuthenticatedCareersCareerIdCompleteRoute
+  '/careers/$careerId/dashboard': typeof AuthenticatedCareersCareerIdDashboardRoute
   '/careers/$careerId/preseason': typeof AuthenticatedCareersCareerIdPreseasonRoute
   '/careers/$careerId/': typeof AuthenticatedCareersCareerIdIndexRoute
 }
@@ -60,6 +76,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/careers': typeof AuthenticatedCareersIndexRoute
+  '/careers/$careerId/complete': typeof AuthenticatedCareersCareerIdCompleteRoute
+  '/careers/$careerId/dashboard': typeof AuthenticatedCareersCareerIdDashboardRoute
   '/careers/$careerId/preseason': typeof AuthenticatedCareersCareerIdPreseasonRoute
   '/careers/$careerId': typeof AuthenticatedCareersCareerIdIndexRoute
 }
@@ -69,6 +87,8 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/careers/': typeof AuthenticatedCareersIndexRoute
+  '/_authenticated/careers/$careerId/complete': typeof AuthenticatedCareersCareerIdCompleteRoute
+  '/_authenticated/careers/$careerId/dashboard': typeof AuthenticatedCareersCareerIdDashboardRoute
   '/_authenticated/careers/$careerId/preseason': typeof AuthenticatedCareersCareerIdPreseasonRoute
   '/_authenticated/careers/$careerId/': typeof AuthenticatedCareersCareerIdIndexRoute
 }
@@ -78,6 +98,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/careers/'
+    | '/careers/$careerId/complete'
+    | '/careers/$careerId/dashboard'
     | '/careers/$careerId/preseason'
     | '/careers/$careerId/'
   fileRoutesByTo: FileRoutesByTo
@@ -85,6 +107,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/careers'
+    | '/careers/$careerId/complete'
+    | '/careers/$careerId/dashboard'
     | '/careers/$careerId/preseason'
     | '/careers/$careerId'
   id:
@@ -93,6 +117,8 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/careers/'
+    | '/_authenticated/careers/$careerId/complete'
+    | '/_authenticated/careers/$careerId/dashboard'
     | '/_authenticated/careers/$careerId/preseason'
     | '/_authenticated/careers/$careerId/'
   fileRoutesById: FileRoutesById
@@ -140,6 +166,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCareersCareerIdIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/careers/$careerId/complete': {
+      id: '/_authenticated/careers/$careerId/complete'
+      path: '/careers/$careerId/complete'
+      fullPath: '/careers/$careerId/complete'
+      preLoaderRoute: typeof AuthenticatedCareersCareerIdCompleteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/careers/$careerId/dashboard': {
+      id: '/_authenticated/careers/$careerId/dashboard'
+      path: '/careers/$careerId/dashboard'
+      fullPath: '/careers/$careerId/dashboard'
+      preLoaderRoute: typeof AuthenticatedCareersCareerIdDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/careers/$careerId/preseason': {
       id: '/_authenticated/careers/$careerId/preseason'
       path: '/careers/$careerId/preseason'
@@ -152,12 +192,18 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCareersIndexRoute: typeof AuthenticatedCareersIndexRoute
+  AuthenticatedCareersCareerIdCompleteRoute: typeof AuthenticatedCareersCareerIdCompleteRoute
+  AuthenticatedCareersCareerIdDashboardRoute: typeof AuthenticatedCareersCareerIdDashboardRoute
   AuthenticatedCareersCareerIdPreseasonRoute: typeof AuthenticatedCareersCareerIdPreseasonRoute
   AuthenticatedCareersCareerIdIndexRoute: typeof AuthenticatedCareersCareerIdIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCareersIndexRoute: AuthenticatedCareersIndexRoute,
+  AuthenticatedCareersCareerIdCompleteRoute:
+    AuthenticatedCareersCareerIdCompleteRoute,
+  AuthenticatedCareersCareerIdDashboardRoute:
+    AuthenticatedCareersCareerIdDashboardRoute,
   AuthenticatedCareersCareerIdPreseasonRoute:
     AuthenticatedCareersCareerIdPreseasonRoute,
   AuthenticatedCareersCareerIdIndexRoute:
