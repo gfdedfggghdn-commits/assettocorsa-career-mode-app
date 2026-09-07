@@ -20,14 +20,28 @@ export type MajorSponsor = {
   operationsUnlock: number;
 };
 
+export type MinorObjectiveType =
+  | "FINISH_POSITION"
+  | "AHEAD_OF_TEAM"
+  | "AHEAD_OF_TEAMMATE"
+  | "BEAT_POSITION_GAINS"
+  | "MANUAL";
+
 export type MinorSponsor = {
   id: string;
   name: string;
   description: string;
   raceObjective: string;
+  /** how the app checks the goal after every race */
+  objectiveType?: MinorObjectiveType;
+  /** e.g. finish 20th or better */
+  objectivePosition?: number;
+  /** team whose drivers you must beat (AHEAD_OF_TEAM) */
+  objectiveTeamId?: string;
   raceReward: number;
   minCompetitiveness: number;
 };
+
 
 export type Driver = {
   id: string;
