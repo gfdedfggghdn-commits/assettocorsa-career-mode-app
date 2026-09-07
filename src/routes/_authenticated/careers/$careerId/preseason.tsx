@@ -225,7 +225,12 @@ function startSeason(
   } else if (previous) {
     Object.assign(driverTeams, previous.driverTeams);
   }
-  if (next.pendingTeamMateId) driverTeams[next.pendingTeamMateId] = PLAYER_TEAM_ID;
+  if (next.pendingTeamMateId) {
+    for (const [id, team] of Object.entries(driverTeams)) {
+      if (team === PLAYER_TEAM_ID && id !== next.pendingTeamMateId) delete driverTeams[id];
+    }
+    driverTeams[next.pendingTeamMateId] = PLAYER_TEAM_ID;
+  }
 
   const sponsor = next.db.majorSponsors.find((s) => s.id === next.pendingMajorSponsorId);
   if (sponsor) next.cash += sponsor.signingBonus;
