@@ -94,9 +94,11 @@ function parseAcRaceResult(
   }
   if (!order || !order.length) return null;
 
-  const entries = order
-    .map((carIndex) => names[carIndex])
-    .filter((e): e is { name: string; car?: string } => !!e && !!e.name);
+  const entries: { name: string; car?: string }[] = [];
+  for (const carIndex of order) {
+    const n = names[carIndex];
+    if (n && n.name) entries.push({ name: n.name, ...(n.car ? { car: n.car } : {}) });
+  }
   if (!entries.length) return null;
 
   return {
