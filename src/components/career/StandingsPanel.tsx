@@ -58,6 +58,7 @@ export function StandingsPanel({ data }: { data: CareerData }) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
+              <th className="label-caps px-2 py-2 text-right">#</th>
               <th className="label-caps sticky left-0 z-10 bg-surface-1 px-3 py-2 text-left">
                 {view === "drivers" ? "Driver" : "Team"}
               </th>
