@@ -64,9 +64,57 @@ function entryTime(entry: Record<string, unknown>): number {
   return 0;
 }
 
+/** Assetto Corsa "results" export: players[] + sessions[].raceResult (car indices, best first). */
+function parseAcRaceResult(
+  json: Record<string, unknown>,
+  trackRaw: string,
+  fileName: string,
+): ParsedResult | null {
+  const players = json["players"];
+  if (!Array.isArray(players) || players.length === 0) return null;
+
+  const names = players.map((p) => {
+    const o = (p ?? {}) as Record<string, unknown>;
+    const n = o["name"] ?? o["Name"] ?? o["driverName"];
+    const car = o["car"] ?? o["Car"] ?? o["model"];
+    return { name: typeof n === "string" ? n.trim() : "", car: typeof car === "string" ? car : undefined };
+  });
+
+  const sessions = json["sessions"] ?? json["Sessions"];
+  if (!Array.isArray(sessions)) return null;
+
+  let order: number[] | null = null;
+  for (const s of sessions.slice().reverse()) {
+    const o = (s ?? {}) as Record<string, unknown>;
+    const rr = o["raceResult"] ?? o["RaceResult"];
+    if (Array.isArray(rr) && rr.length) {
+      order = rr.filter((v): v is number => typeof v === "number");
+      break;
+    }
+  }
+  if (!order || !order.length) return null;
+
+  const entries: { name: string; car?: string }[] = [];
+  for (const carIndex of order) {
+    const n = names[carIndex];
+    if (n && n.name) entries.push({ name: n.name, ...(n.car ? { car: n.car } : {}) });
+  }
+  if (!entries.length) return null;
+
+  return {
+    trackRaw,
+    order: entries,
+    sourceKey: `${fileName}|${trackRaw}|${entries.map((e) => e.name).join(",")}`,
+  };
+}
+
 export function parseResultFile(raw: string, fileName: string): ParsedResult {
   const json = JSON.parse(raw) as Record<string, unknown>;
   const trackRaw = pickTrack(json);
+
+  const ac = parseAcRaceResult(json, trackRaw, fileName);
+  if (ac) return ac;
+
   const entries = pickResults(json).filter((e) => entryName(e));
   if (!entries.length) throw new Error("No driver results found in this file.");
 

@@ -58,6 +58,7 @@ export function StandingsPanel({ data }: { data: CareerData }) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
+              <th className="label-caps px-2 py-2 text-right">#</th>
               <th className="label-caps sticky left-0 z-10 bg-surface-1 px-3 py-2 text-left">
                 {view === "drivers" ? "Driver" : "Team"}
               </th>
@@ -71,8 +72,9 @@ export function StandingsPanel({ data }: { data: CareerData }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {rows.map((r, rank) => (
               <tr key={r.id} className="border-t border-border/60">
+                <td className="px-2 py-2 text-right font-mono text-muted-foreground">{rank + 1}</td>
                 <td className="sticky left-0 z-10 bg-surface-1 px-3 py-2 whitespace-nowrap">
                   <span className="flex items-center gap-2">
                     <span

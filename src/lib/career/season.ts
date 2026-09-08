@@ -1,4 +1,4 @@
-import { currentSeason, midSeasonRound, raceIncome } from "./engine";
+import { currentSeason, evaluateMinorSponsors, midSeasonRound, raceIncome } from "./engine";
 import { matchDriver, matchTrack, parseResultFile } from "./resultParser";
 import { PLAYER_TEAM_ID, type CareerData, type CareerState, type RaceResult } from "./types";
 
@@ -81,7 +81,9 @@ export function processResultFile(
   season.results.push(result);
   season.results.sort((a, b) => a.round - b.round);
 
-  next.cash += raceIncome(next, season);
+  const outcomes = evaluateMinorSponsors(next, season, positions);
+  next.cash += raceIncome(next, season, positions);
+  const metCount = outcomes.filter((o) => o.met).length;
 
   const isFinal = season.results.length >= season.calendar.length;
   const midRound = midSeasonRound(season.calendar.length);
@@ -102,6 +104,7 @@ export function processResultFile(
     message = `Round ${target.round} saved. The mid-season contract window is now open.`;
   }
 
+  if (outcomes.length) message += ` ${metCount}/${outcomes.length} sponsor goals met.`;
   if (unmatched.length) message += ` ${unmatched.length} unknown driver(s) skipped.`;
 
   return { data: next, state: nextState, message, round: target.round };

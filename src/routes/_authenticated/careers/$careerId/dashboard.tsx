@@ -10,7 +10,8 @@ import { StandingsPanel } from "@/components/career/StandingsPanel";
 import { DriverMarketPanel } from "@/components/career/DriverMarketPanel";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Flag, LineChart, Upload, Users, Wrench } from "lucide-react";
+import { ArrowLeft, Database, Flag, LineChart, Upload, Users, Wrench } from "lucide-react";
+import { DatabasesPanel } from "@/components/career/DatabasesPanel";
 
 export const Route = createFileRoute("/_authenticated/careers/$careerId/dashboard")({
   head: () => ({
@@ -29,13 +30,14 @@ export const Route = createFileRoute("/_authenticated/careers/$careerId/dashboar
   component: DashboardPage,
 });
 
-type Tab = "development" | "sponsorship" | "standings" | "market";
+type Tab = "development" | "sponsorship" | "standings" | "market" | "databases";
 
 const TABS: { key: Tab; label: string; icon: typeof Wrench }[] = [
   { key: "development", label: "Development", icon: Wrench },
   { key: "sponsorship", label: "Sponsorship", icon: LineChart },
   { key: "standings", label: "Standings", icon: Flag },
   { key: "market", label: "Driver market", icon: Users },
+  { key: "databases", label: "Databases", icon: Database },
 ];
 
 function DashboardPage() {
@@ -190,6 +192,7 @@ function DashboardPage() {
           {tab === "market" && (
             <DriverMarketPanel data={data} state={state} update={update} apply={apply} />
           )}
+          {tab === "databases" && <DatabasesPanel data={data} update={update} />}
         </section>
       </div>
     </main>

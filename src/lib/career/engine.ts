@@ -182,12 +182,64 @@ export function prizeMoneyFor(data: CareerData, position: number): number {
   return data.db.prizeMoney.find((p) => p.position === position)?.amount ?? 0;
 }
 
-export function raceIncome(data: CareerData, season: SeasonRecord): number {
+/** Drivers racing for the player's own team this season. */
+export function playerDriverIds(season: SeasonRecord): string[] {
+  return Object.entries(season.driverTeams)
+    .filter(([, t]) => t === PLAYER_TEAM_ID)
+    .map(([id]) => id);
+}
+
+export type MinorOutcome = { id: string; name: string; met: boolean; reward: number };
+
+/** Checks each contracted minor sponsor's race objective against one race's positions. */
+export function evaluateMinorSponsors(
+  data: CareerData,
+  season: SeasonRecord,
+  positions: Record<string, number>,
+): MinorOutcome[] {
+  const mine = playerDriverIds(season);
+  const teamMateId = season.teamMateId;
+  const ownIds = mine.filter((id) => id !== teamMateId);
+  const bestOf = (ids: string[]) => {
+    const vals = ids.map((id) => positions[id]).filter((v): v is number => v != null);
+    return vals.length ? Math.min(...vals) : null;
+  };
+  const myBest = bestOf(ownIds.length ? ownIds : mine);
+
+  const out: MinorOutcome[] = [];
+  for (const id of season.minorSponsorIds) {
+    const s = data.db.minorSponsors.find((x) => x.id === id);
+    if (!s) continue;
+    const type = s.objectiveType ?? "MANUAL";
+    let met = true;
+    if (type === "FINISH_POSITION") {
+      met = myBest != null && myBest <= (s.objectivePosition ?? 20);
+    } else if (type === "AHEAD_OF_TEAMMATE") {
+      const mate = teamMateId ? positions[teamMateId] : undefined;
+      met = myBest != null && mate != null && myBest < mate;
+    } else if (type === "AHEAD_OF_TEAM") {
+      const rivals = Object.entries(season.driverTeams)
+        .filter(([, t]) => t === s.objectiveTeamId)
+        .map(([d]) => positions[d])
+        .filter((v): v is number => v != null);
+      met = myBest != null && rivals.length > 0 && rivals.some((r) => myBest < r);
+    }
+    out.push({ id: s.id, name: s.name, met, reward: s.raceReward });
+  }
+  return out;
+}
+
+/** Income for a single race: major sponsor retainer plus every minor sponsor whose goal was met. */
+export function raceIncome(
+  data: CareerData,
+  season: SeasonRecord,
+  positions?: Record<string, number>,
+): number {
   const major = data.db.majorSponsors.find((s) => s.id === season.majorSponsorId);
   let income = major?.weeklyIncome ?? 0;
-  for (const id of season.minorSponsorIds) {
-    const minor = data.db.minorSponsors.find((s) => s.id === id);
-    if (minor) income += minor.raceReward;
+  if (!positions) return income;
+  for (const o of evaluateMinorSponsors(data, season, positions)) {
+    if (o.met) income += o.reward;
   }
   return income;
 }
