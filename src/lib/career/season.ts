@@ -81,7 +81,9 @@ export function processResultFile(
   season.results.push(result);
   season.results.sort((a, b) => a.round - b.round);
 
-  next.cash += raceIncome(next, season);
+  const outcomes = evaluateMinorSponsors(next, season, positions);
+  next.cash += raceIncome(next, season, positions);
+  const metCount = outcomes.filter((o) => o.met).length;
 
   const isFinal = season.results.length >= season.calendar.length;
   const midRound = midSeasonRound(season.calendar.length);
