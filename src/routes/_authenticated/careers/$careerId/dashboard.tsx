@@ -192,6 +192,7 @@ function DashboardPage() {
           {tab === "market" && (
             <DriverMarketPanel data={data} state={state} update={update} apply={apply} />
           )}
+          {tab === "databases" && <DatabasesPanel data={data} update={update} />}
         </section>
       </div>
     </main>
