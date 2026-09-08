@@ -1,4 +1,4 @@
-import { currentSeason, midSeasonRound, raceIncome } from "./engine";
+import { currentSeason, evaluateMinorSponsors, midSeasonRound, raceIncome } from "./engine";
 import { matchDriver, matchTrack, parseResultFile } from "./resultParser";
 import { PLAYER_TEAM_ID, type CareerData, type CareerState, type RaceResult } from "./types";
 
