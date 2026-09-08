@@ -104,6 +104,7 @@ export function processResultFile(
     message = `Round ${target.round} saved. The mid-season contract window is now open.`;
   }
 
+  if (outcomes.length) message += ` ${metCount}/${outcomes.length} sponsor goals met.`;
   if (unmatched.length) message += ` ${unmatched.length} unknown driver(s) skipped.`;
 
   return { data: next, state: nextState, message, round: target.round };
