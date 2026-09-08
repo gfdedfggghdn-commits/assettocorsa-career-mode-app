@@ -408,10 +408,31 @@ function PhaseOne({
 
       <EntityEditor<MinorSponsor>
         title="Minor sponsors"
+        description="Pick a goal type and the app checks it after every race, paying the reward only when it is met."
         fields={[
           { key: "name", label: "Name", width: "12rem" },
-          { key: "description", label: "Description", width: "16rem" },
-          { key: "raceObjective", label: "Race objective", width: "14rem" },
+          { key: "description", label: "Description", width: "14rem" },
+          { key: "raceObjective", label: "Race objective", width: "12rem" },
+          {
+            key: "objectiveType",
+            label: "Goal type",
+            type: "select",
+            width: "12rem",
+            options: [
+              { value: "FINISH_POSITION", label: "Finish Nth or better" },
+              { value: "AHEAD_OF_TEAMMATE", label: "Finish ahead of team mate" },
+              { value: "AHEAD_OF_TEAM", label: "Finish ahead of a team" },
+              { value: "MANUAL", label: "Always pay (manual)" },
+            ],
+          },
+          { key: "objectivePosition", label: "Position", type: "number", width: "6rem" },
+          {
+            key: "objectiveTeamId",
+            label: "Rival team",
+            type: "select",
+            width: "12rem",
+            options: draft.db.teams.map((t) => ({ value: t.id, label: t.name || "Unnamed" })),
+          },
           { key: "raceReward", label: "Race income", type: "number" },
           { key: "minCompetitiveness", label: "Min comp.", type: "number", width: "6rem" },
         ]}
@@ -421,6 +442,9 @@ function PhaseOne({
           name: "",
           description: "",
           raceObjective: "",
+          objectiveType: "FINISH_POSITION",
+          objectivePosition: 20,
+          objectiveTeamId: "",
           raceReward: 100000,
           minCompetitiveness: 0,
         })}
