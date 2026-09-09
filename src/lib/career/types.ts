@@ -7,6 +7,8 @@ export type CareerState =
   | "SEASON_COMPLETE";
 
 export const PLAYER_TEAM_ID = "PLAYER";
+/** Pseudo driver representing the player themselves in results and standings. */
+export const PLAYER_DRIVER_ID = "PLAYER_DRIVER";
 
 export type MajorSponsor = {
   id: string;
@@ -40,6 +42,7 @@ export type MinorSponsor = {
   objectiveTeamId?: string;
   raceReward: number;
   minCompetitiveness: number;
+  operationsUnlock?: number;
 };
 
 
@@ -52,7 +55,8 @@ export type Driver = {
   pace: number;
   aggressiveness: number;
   f1Years: number;
-  contractCost: number;
+  /** legacy: contract cost is now derived from the rating and F1 years */
+  contractCost?: number;
 };
 
 export type Team = {
@@ -81,6 +85,13 @@ export type Track = {
   acApproxId: string;
 };
 
+/** Names the player has raced under, recognised in result files. */
+export type PlayerName = {
+  id: string;
+  name: string;
+  nationality: string;
+};
+
 export type StartingTier = {
   id: string;
   label: string;
@@ -100,9 +111,12 @@ export type CareerDatabases = {
   teams: Team[];
   powerUnits: PowerUnit[];
   tracks: Track[];
+  playerNames: PlayerName[];
   season1: Season1Entry[];
   startingTiers: StartingTier[];
   prizeMoney: PrizeMoneyRow[];
+  /** cost of a driver rated 80; every 10 rating points multiplies it by 1.75 */
+  contractCostBase: number;
 };
 
 export type Development = {
@@ -121,6 +135,13 @@ export type RaceResult = {
   sourceKey: string;
 };
 
+/** Frozen copy of everything a past season referenced, so history never breaks. */
+export type SeasonSnapshot = {
+  drivers: Record<string, { firstName: string; lastName: string; nationality: string }>;
+  teams: Record<string, { name: string; colour: string }>;
+  tracks: Record<string, { country: string; city: string }>;
+};
+
 export type SeasonRecord = {
   number: number;
   calendar: string[];
@@ -135,6 +156,7 @@ export type SeasonRecord = {
   midSeasonWindowUsed: boolean;
   completed: boolean;
   majorObjectiveMet: boolean | null;
+  snapshot?: SeasonSnapshot;
 };
 
 export type CareerData = {
@@ -152,6 +174,8 @@ export type CareerData = {
   /** carried into the upcoming season while still in the windows */
   pendingMajorSponsorId: string | null;
   pendingTeamMateId: string | null;
+  /** money made from the most recent race upload; null between seasons */
+  lastRaceEarnings: number | null;
 };
 
 export type Career = {
@@ -166,6 +190,10 @@ export const MAX_UPGRADES = 20;
 export const BASE_UPGRADE_COST = 250000;
 export const POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 
+/** Contract cost defaults: rating 80 -> $6m, rating 90 -> $10.5m. */
+export const DEFAULT_CONTRACT_BASE = 6000000;
+export const F1_YEAR_BONUS = 250000;
+
 export const emptyDatabases = (): CareerDatabases => ({
   majorSponsors: [],
   minorSponsors: [],
@@ -173,6 +201,7 @@ export const emptyDatabases = (): CareerDatabases => ({
   teams: [],
   powerUnits: [],
   tracks: [],
+  playerNames: [],
   season1: [],
   startingTiers: [
     { id: "small", label: "Small", startingCash: 5000000, startingCompetitiveness: 20 },
@@ -180,6 +209,7 @@ export const emptyDatabases = (): CareerDatabases => ({
     { id: "big", label: "Big", startingCash: 25000000, startingCompetitiveness: 60 },
   ],
   prizeMoney: [],
+  contractCostBase: DEFAULT_CONTRACT_BASE,
 });
 
 export const emptyCareerData = (): CareerData => ({
@@ -191,6 +221,7 @@ export const emptyCareerData = (): CareerData => ({
   preseasonPhase: 1,
   pendingMajorSponsorId: null,
   pendingTeamMateId: null,
+  lastRaceEarnings: null,
 });
 
 export type SetKind =
@@ -202,4 +233,5 @@ export type SetKind =
   | "season1"
   | "startingTiers"
   | "prizeMoney"
+  | "playerNames"
   | "tracks";
