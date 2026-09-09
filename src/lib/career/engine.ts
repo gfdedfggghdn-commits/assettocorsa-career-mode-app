@@ -1,12 +1,17 @@
 import {
   BASE_UPGRADE_COST,
+  DEFAULT_CONTRACT_BASE,
+  F1_YEAR_BONUS,
   MAX_UPGRADES,
+  PLAYER_DRIVER_ID,
   PLAYER_TEAM_ID,
   POINTS,
   type CareerData,
+  type CareerDatabases,
   type Development,
   type Driver,
   type SeasonRecord,
+  type SeasonSnapshot,
 } from "./types";
 
 export const money = (n: number) =>
@@ -16,10 +21,20 @@ export const money = (n: number) =>
 
 export const driverName = (d: Driver) => `${d.firstName} ${d.lastName.toUpperCase()}`;
 
+/** F1 experience deliberately excluded — it only feeds the contract cost. */
 export const overallRating = (d: Driver) => {
   const weighted = (d.racecraft * 3 + d.pace * 2 + d.aggressiveness * 2) / 7;
-  return Math.round((weighted + (d.f1Years || 0)) * 10) / 10;
+  return Math.round(weighted * 10) / 10;
 };
+
+/** Rating 80 costs the base value; every 10 rating points multiplies it by 1.75. */
+export const CONTRACT_GROWTH = Math.pow(1.75, 1 / 10);
+
+export function driverCost(db: CareerDatabases, d: Driver): number {
+  const base = db.contractCostBase || DEFAULT_CONTRACT_BASE;
+  const skill = base * Math.pow(CONTRACT_GROWTH, overallRating(d) - 80);
+  return Math.round((skill + (d.f1Years || 0) * F1_YEAR_BONUS) / 1000) * 1000;
+}
 
 export const pointsFor = (position: number) => POINTS[position - 1] ?? 0;
 
@@ -47,6 +62,78 @@ export const upgradeCost = (level: number, dev: Development, section: keyof Deve
 export const acRestrictor = (dev: Development) => Math.max(0, 60 - dev.powerUnit * 5);
 export const acBallast = (dev: Development) => Math.max(0, 40 - dev.chassis * 2);
 
+/* ---------------- history-safe lookups ---------------- */
+
+export const playerLabel = (data: CareerData) => data.db.playerNames[0]?.name || "You";
+export const playerNationality = (data: CareerData) => data.db.playerNames[0]?.nationality ?? "";
+
+/** Freezes the current names/colours of everything this season uses. */
+export function captureSnapshot(data: CareerData, season: SeasonRecord) {
+  const snap: SeasonSnapshot = season.snapshot ?? { drivers: {}, teams: {}, tracks: {} };
+  const ids = new Set<string>([
+    ...Object.keys(season.driverTeams),
+    ...season.results.flatMap((r) => Object.keys(r.positions)),
+  ]);
+  for (const d of data.db.drivers) if (ids.has(d.id)) ids.add(d.id);
+  for (const id of ids) {
+    const d = data.db.drivers.find((x) => x.id === id);
+    if (d) snap.drivers[id] = { firstName: d.firstName, lastName: d.lastName, nationality: d.nationality };
+  }
+  for (const t of data.db.teams) {
+    if (Object.values(season.driverTeams).includes(t.id)) {
+      snap.teams[t.id] = { name: t.name, colour: t.colour };
+    }
+  }
+  for (const trackId of season.calendar) {
+    const t = data.db.tracks.find((x) => x.id === trackId);
+    if (t) snap.tracks[trackId] = { country: t.country, city: t.city };
+  }
+  season.snapshot = snap;
+}
+
+export function seasonDriverInfo(
+  data: CareerData,
+  season: SeasonRecord,
+  id: string,
+): { name: string; nationality: string } {
+  if (id === PLAYER_DRIVER_ID) {
+    return { name: playerLabel(data).toUpperCase(), nationality: playerNationality(data) };
+  }
+  const live = data.db.drivers.find((d) => d.id === id);
+  if (live) return { name: driverName(live), nationality: live.nationality };
+  const snap = season.snapshot?.drivers[id];
+  if (snap) return { name: `${snap.firstName} ${snap.lastName.toUpperCase()}`, nationality: snap.nationality };
+  return { name: "Unknown driver", nationality: "" };
+}
+
+export function seasonTeamInfo(
+  data: CareerData,
+  season: SeasonRecord,
+  teamId: string | undefined,
+): { name: string; colour: string } {
+  if (!teamId) return { name: "Free Agent", colour: "transparent" };
+  if (teamId === PLAYER_TEAM_ID) return { name: data.team.name || "My Team", colour: data.team.colour || "#e10600" };
+  const live = data.db.teams.find((t) => t.id === teamId);
+  if (live) return { name: live.name, colour: live.colour };
+  const snap = season.snapshot?.teams[teamId];
+  if (snap) return { name: snap.name, colour: snap.colour };
+  return { name: "Former team", colour: "#888888" };
+}
+
+export function seasonTrackInfo(
+  data: CareerData,
+  season: SeasonRecord,
+  trackId: string,
+): { country: string; city: string } {
+  const live = data.db.tracks.find((t) => t.id === trackId);
+  if (live) return { country: live.country, city: live.city };
+  const snap = season.snapshot?.tracks[trackId];
+  if (snap) return snap;
+  return { country: "", city: "" };
+}
+
+/* ---------------- competitiveness ---------------- */
+
 /** Average finishing position per team across all completed rounds of a season. */
 export function teamAverageFinish(season: SeasonRecord): Record<string, number> {
   const sums: Record<string, { total: number; count: number }> = {};
@@ -55,8 +142,8 @@ export function teamAverageFinish(season: SeasonRecord): Record<string, number> 
       const teamId = season.driverTeams[driverId];
       if (!teamId) continue;
       sums[teamId] ??= { total: 0, count: 0 };
-      sums[teamId].total += pos;
-      sums[teamId].count += 1;
+      sums[teamId]!.total += pos;
+      sums[teamId]!.count += 1;
     }
   }
   const out: Record<string, number> = {};
@@ -91,46 +178,83 @@ export function competitiveness(data: CareerData): number {
 }
 
 export function isMajorSponsorUnlocked(
-  sponsor: { minCompetitiveness: number; operationsUnlock: number },
+  sponsor: { minCompetitiveness: number; operationsUnlock?: number },
   comp: number,
   operations: number,
 ) {
-  if (sponsor.operationsUnlock > 0 && operations >= sponsor.operationsUnlock) return true;
+  if ((sponsor.operationsUnlock ?? 0) > 0 && operations >= (sponsor.operationsUnlock ?? 0)) return true;
   return comp >= sponsor.minCompetitiveness;
 }
+
+/* ---------------- standings ---------------- */
 
 export type StandingRow = {
   id: string;
   label: string;
+  nationality: string;
+  teamName: string;
   colour: string;
   cells: (number | null)[];
+  /** how often this entrant finished P1, P2, P3 … used for countback */
+  posCounts: number[];
   total: number;
 };
 
+const COUNTBACK_DEPTH = 30;
+
+/** Points first, then most 1st places, most 2nd places, and so on. */
+function compareRows(a: StandingRow, b: StandingRow) {
+  if (b.total !== a.total) return b.total - a.total;
+  for (let i = 0; i < COUNTBACK_DEPTH; i++) {
+    const diff = (b.posCounts[i] ?? 0) - (a.posCounts[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return a.label.localeCompare(b.label);
+}
+
+/** All entrant ids that took part in a season, including the player. */
+export function seasonDriverIds(data: CareerData, season: SeasonRecord): string[] {
+  const ids = new Set<string>([PLAYER_DRIVER_ID]);
+  for (const id of Object.keys(season.driverTeams)) ids.add(id);
+  for (const r of season.results) for (const id of Object.keys(r.positions)) ids.add(id);
+  for (const d of data.db.drivers) if (season.driverTeams[d.id]) ids.add(d.id);
+  return [...ids];
+}
+
 export function driverStandings(data: CareerData, season: SeasonRecord): StandingRow[] {
   const rounds = season.calendar.length;
-  const rows: StandingRow[] = data.db.drivers.map((d) => {
+  const rows: StandingRow[] = seasonDriverIds(data, season).map((id) => {
     const cells: (number | null)[] = Array.from({ length: rounds }, () => null);
+    const posCounts: number[] = Array.from({ length: COUNTBACK_DEPTH }, () => 0);
     let total = 0;
+    let raced = false;
     for (const race of season.results) {
-      const pos = race.positions[d.id];
+      const pos = race.positions[id];
       if (pos != null) {
         cells[race.round - 1] = pos;
         total += pointsFor(pos);
+        if (pos >= 1 && pos <= COUNTBACK_DEPTH) posCounts[pos - 1] = (posCounts[pos - 1] ?? 0) + 1;
+        raced = true;
       }
     }
-    const teamId = season.driverTeams[d.id];
+    const teamId = season.driverTeams[id];
+    const info = seasonDriverInfo(data, season, id);
+    const team = seasonTeamInfo(data, season, teamId);
     return {
-      id: d.id,
-      label: driverName(d),
-      colour: teamColour(data, teamId),
+      id,
+      label: info.name,
+      nationality: info.nationality,
+      teamName: team.name,
+      colour: team.colour,
       cells,
+      posCounts,
       total,
-    };
+      _raced: raced,
+    } as StandingRow & { _raced: boolean };
   });
   return rows
-    .filter((r) => r.cells.some((c) => c != null) || season.driverTeams[r.id])
-    .sort((a, b) => b.total - a.total);
+    .filter((r) => (r as StandingRow & { _raced: boolean })._raced || season.driverTeams[r.id])
+    .sort(compareRows);
 }
 
 export function teamColour(data: CareerData, teamId: string | undefined): string {
@@ -152,6 +276,7 @@ export function constructorStandings(data: CareerData, season: SeasonRecord): St
 
   const rows: StandingRow[] = teamIds.map((teamId) => {
     const cells: (number | null)[] = Array.from({ length: rounds }, () => null);
+    const posCounts: number[] = Array.from({ length: COUNTBACK_DEPTH }, () => 0);
     let total = 0;
     for (const race of season.results) {
       let pts = 0;
@@ -160,6 +285,7 @@ export function constructorStandings(data: CareerData, season: SeasonRecord): St
         if (season.driverTeams[driverId] === teamId) {
           pts += pointsFor(pos);
           scored = true;
+          if (pos >= 1 && pos <= COUNTBACK_DEPTH) posCounts[pos - 1] = (posCounts[pos - 1] ?? 0) + 1;
         }
       }
       if (scored) {
@@ -167,9 +293,19 @@ export function constructorStandings(data: CareerData, season: SeasonRecord): St
         total += pts;
       }
     }
-    return { id: teamId, label: teamLabel(data, teamId), colour: teamColour(data, teamId), cells, total };
+    const info = seasonTeamInfo(data, season, teamId);
+    return {
+      id: teamId,
+      label: info.name,
+      nationality: "",
+      teamName: info.name,
+      colour: info.colour,
+      cells,
+      posCounts,
+      total,
+    };
   });
-  return rows.sort((a, b) => b.total - a.total);
+  return rows.sort(compareRows);
 }
 
 export function constructorPosition(data: CareerData, season: SeasonRecord): number {
@@ -178,15 +314,23 @@ export function constructorPosition(data: CareerData, season: SeasonRecord): num
   return idx === -1 ? rows.length : idx + 1;
 }
 
+export function driverPositionOf(data: CareerData, season: SeasonRecord, id: string | null): number | null {
+  if (!id) return null;
+  const idx = driverStandings(data, season).findIndex((r) => r.id === id);
+  return idx === -1 ? null : idx + 1;
+}
+
 export function prizeMoneyFor(data: CareerData, position: number): number {
   return data.db.prizeMoney.find((p) => p.position === position)?.amount ?? 0;
 }
 
 /** Drivers racing for the player's own team this season. */
 export function playerDriverIds(season: SeasonRecord): string[] {
-  return Object.entries(season.driverTeams)
+  const ids = Object.entries(season.driverTeams)
     .filter(([, t]) => t === PLAYER_TEAM_ID)
     .map(([id]) => id);
+  if (!ids.includes(PLAYER_DRIVER_ID)) ids.push(PLAYER_DRIVER_ID);
+  return ids;
 }
 
 export type MinorOutcome = { id: string; name: string; met: boolean; reward: number };
@@ -197,14 +341,8 @@ export function evaluateMinorSponsors(
   season: SeasonRecord,
   positions: Record<string, number>,
 ): MinorOutcome[] {
-  const mine = playerDriverIds(season);
   const teamMateId = season.teamMateId;
-  const ownIds = mine.filter((id) => id !== teamMateId);
-  const bestOf = (ids: string[]) => {
-    const vals = ids.map((id) => positions[id]).filter((v): v is number => v != null);
-    return vals.length ? Math.min(...vals) : null;
-  };
-  const myBest = bestOf(ownIds.length ? ownIds : mine);
+  const myBest = positions[PLAYER_DRIVER_ID] ?? null;
 
   const out: MinorOutcome[] = [];
   for (const id of season.minorSponsorIds) {
