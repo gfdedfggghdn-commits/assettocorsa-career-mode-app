@@ -237,7 +237,7 @@ function startSeason(
 
   if (seasonNumber === 1) {
     const teamMate = next.db.drivers.find((d) => d.id === next.pendingTeamMateId);
-    if (teamMate) next.cash -= teamMate.contractCost;
+    if (teamMate) next.cash -= driverCost(next.db, teamMate);
   }
   const pu = next.db.powerUnits.find((p) => p.id === powerUnitId);
   if (pu) next.cash -= pu.cost;
@@ -895,7 +895,9 @@ function PhaseThree({
                 <span className="flex-1 font-medium">{driverName(d)}</span>
                 <span className="text-xs text-muted-foreground">Free Agent</span>
                 <span className="font-mono text-sm">{overallRating(d)}</span>
-                <span className="w-28 text-right font-mono text-sm">{money(d.contractCost)}</span>
+                <span className="w-28 text-right font-mono text-sm">
+                  {money(driverCost(draft.db, d))}
+                </span>
               </button>
             ))}
             {freeAgents.length === 0 && (
