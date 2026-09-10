@@ -1,6 +1,18 @@
-import { currentSeason, evaluateMinorSponsors, midSeasonRound, raceIncome } from "./engine";
+import {
+  captureSnapshot,
+  currentSeason,
+  evaluateMinorSponsors,
+  midSeasonRound,
+  raceIncome,
+} from "./engine";
 import { matchDriver, matchTrack, parseResultFile } from "./resultParser";
-import { PLAYER_TEAM_ID, type CareerData, type CareerState, type RaceResult } from "./types";
+import {
+  PLAYER_DRIVER_ID,
+  PLAYER_TEAM_ID,
+  type CareerData,
+  type CareerState,
+  type RaceResult,
+} from "./types";
 
 export type UploadOutcome = {
   data: CareerData;
@@ -58,16 +70,28 @@ export function processResultFile(
 
   const positions: Record<string, number> = {};
   let position = 0;
-  const unmatched: string[] = [];
+  const unknown: string[] = [];
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const aliases = new Set(next.db.playerNames.map((p) => norm(p.name)).filter(Boolean));
+
   for (const entry of parsed.order) {
-    const driver = matchDriver(entry.name, next.db.drivers);
-    if (!driver) {
-      unmatched.push(entry.name);
+    const isPlayer = aliases.has(norm(entry.name));
+    const driver = isPlayer ? null : matchDriver(entry.name, next.db.drivers);
+    if (!isPlayer && !driver) {
+      if (!unknown.includes(entry.name)) unknown.push(entry.name);
       continue;
     }
-    if (positions[driver.id] != null) continue;
+    const id = isPlayer ? PLAYER_DRIVER_ID : driver!.id;
+    if (positions[id] != null) continue;
     position += 1;
-    positions[driver.id] = position;
+    positions[id] = position;
+  }
+
+  if (unknown.length) {
+    const who = unknown.map((n) => `"${n}"`).join(", ");
+    throw new Error(
+      `Hey, who's ${who}? Add them to the drivers database with the correct stats and try uploading this file again.`,
+    );
   }
   if (position === 0) throw new Error("None of the drivers in this file match your drivers database.");
 
