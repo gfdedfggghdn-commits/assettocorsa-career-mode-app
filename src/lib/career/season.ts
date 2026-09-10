@@ -106,7 +106,10 @@ export function processResultFile(
   season.results.sort((a, b) => a.round - b.round);
 
   const outcomes = evaluateMinorSponsors(next, season, positions);
-  next.cash += raceIncome(next, season, positions);
+  const earned = raceIncome(next, season, positions);
+  next.cash += earned;
+  next.lastRaceEarnings = earned;
+  captureSnapshot(next, season);
   const metCount = outcomes.filter((o) => o.met).length;
 
   const isFinal = season.results.length >= season.calendar.length;
@@ -129,7 +132,6 @@ export function processResultFile(
   }
 
   if (outcomes.length) message += ` ${metCount}/${outcomes.length} sponsor goals met.`;
-  if (unmatched.length) message += ` ${unmatched.length} unknown driver(s) skipped.`;
 
   return { data: next, state: nextState, message, round: target.round };
 }
