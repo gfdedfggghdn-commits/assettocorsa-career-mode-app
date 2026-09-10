@@ -37,7 +37,7 @@ export function DriverMarketPanel({
   const mate = teamMateOf(data);
   const drivers = [...data.db.drivers].sort((a, b) => overallRating(b) - overallRating(a));
 
-  const priceFor = (d: Driver) => (midWindow && d.id === mate ? 0 : d.contractCost);
+  const priceFor = (d: Driver) => (midWindow && d.id === mate ? 0 : driverCost(data.db, d));
 
   const sign = (d: Driver) => {
     const cost = priceFor(d);
@@ -119,7 +119,7 @@ export function DriverMarketPanel({
               </span>
               <span className="font-mono text-sm">{overallRating(d)}</span>
               <span className="w-28 text-right font-mono text-sm text-muted-foreground">
-                {money(d.contractCost)}
+                {money(driverCost(data.db, d))}
               </span>
             </button>
           );
@@ -138,7 +138,7 @@ export function DriverMarketPanel({
                 <DialogTitle className="headline text-2xl">Not enough money</DialogTitle>
               </DialogHeader>
               <p className="text-sm text-muted-foreground">
-                {driverName(selected)} costs {money(selected.contractCost)}. You have{" "}
+                {driverName(selected)} costs {money(driverCost(data.db, selected))}. You have{" "}
                 {money(data.cash)}.
               </p>
               <DialogFooter>
