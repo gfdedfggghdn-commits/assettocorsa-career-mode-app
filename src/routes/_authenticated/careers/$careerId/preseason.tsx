@@ -556,6 +556,27 @@ function PhaseOne({
         }
       />
 
+      <EntityEditor<PlayerName>
+        title="Your driver names"
+        description="Names you race under in Assetto Corsa, so result files can spot you. Add every alias you use."
+        fields={[
+          { key: "name", label: "Name in the game", width: "16rem" },
+          { key: "nationality", label: "Nationality", width: "12rem" },
+        ]}
+        rows={draft.db.playerNames}
+        makeEmpty={() => ({ id: uid(), name: "", nationality: "" })}
+        onChange={(rows) => patch((d) => void (d.db.playerNames = rows))}
+        extra={
+          <SetBar
+            kind="playerNames"
+            rows={draft.db.playerNames}
+            onLoad={(rows) => patch((d) => void (d.db.playerNames = rows))}
+          />
+        }
+      />
+
+      <ContractCostEditor draft={draft} patch={patch} />
+
       {isFirstSeason && <Season1Editor draft={draft} patch={patch} />}
     </div>
   );
