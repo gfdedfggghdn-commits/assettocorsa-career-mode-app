@@ -11,12 +11,16 @@ import {
   type PrizeMoneyRow,
   type Season1Entry,
   type SeasonRecord,
+  DEFAULT_CONTRACT_BASE,
+  F1_YEAR_BONUS,
+  type PlayerName,
   type StartingTier,
   type Team,
   type Track,
 } from "@/lib/career/types";
 import {
   competitiveness,
+  CONTRACT_GROWTH,
   driverCost,
   driverName,
   isMajorSponsorUnlocked,
