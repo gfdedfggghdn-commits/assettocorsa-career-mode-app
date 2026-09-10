@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { currentSeason, driverName, money, overallRating, teamColour, teamLabel } from "@/lib/career/engine";
+import {
+  currentSeason,
+  driverCost,
+  driverName,
+  money,
+  overallRating,
+  teamColour,
+  teamLabel,
+} from "@/lib/career/engine";
 import { teamMateOf } from "@/lib/career/season";
 import { PLAYER_TEAM_ID, type CareerData, type CareerState, type Driver } from "@/lib/career/types";
 import { toast } from "sonner";

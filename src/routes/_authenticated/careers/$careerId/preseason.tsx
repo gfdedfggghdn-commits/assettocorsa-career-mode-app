@@ -17,6 +17,7 @@ import {
 } from "@/lib/career/types";
 import {
   competitiveness,
+  driverCost,
   driverName,
   isMajorSponsorUnlocked,
   money,
