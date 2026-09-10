@@ -18,9 +18,11 @@ type Props<T> = {
   kind: SetKind;
   rows: T[];
   onLoad: (rows: T[]) => void;
+  /** append instead of replace; defaults to onLoad([...rows, ...added]) */
+  onAdd?: (rows: T[]) => void;
 };
 
-export function SetBar<T>({ kind, rows, onLoad }: Props<T>) {
+export function SetBar<T>({ kind, rows, onLoad, onAdd }: Props<T>) {
   const { data: sets } = useSets(kind);
   const save = useSaveSet();
   const remove = useDeleteSet();
@@ -38,7 +40,8 @@ export function SetBar<T>({ kind, rows, onLoad }: Props<T>) {
         <DialogHeader>
           <DialogTitle>Reusable sets</DialogTitle>
           <DialogDescription>
-            Save this list under a name and load it into any other career later.
+            Save this list under a name and reuse it in any career. "Load" replaces the current
+            list, "Add" appends it so you can combine two sets and remove duplicates by hand.
           </DialogDescription>
         </DialogHeader>
 
@@ -79,6 +82,19 @@ export function SetBar<T>({ kind, rows, onLoad }: Props<T>) {
                 }}
               >
                 Load
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  const incoming = s.data as T[];
+                  if (onAdd) onAdd(incoming);
+                  else onLoad([...rows, ...incoming]);
+                  setOpen(false);
+                  toast.success(`Added "${s.name}".`);
+                }}
+              >
+                Add
               </Button>
               <Button size="icon" variant="ghost" onClick={() => remove.mutate(s.id)}>
                 <Trash2 className="size-4" />
