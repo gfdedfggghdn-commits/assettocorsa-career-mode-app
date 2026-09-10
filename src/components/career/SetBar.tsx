@@ -18,6 +18,8 @@ type Props<T> = {
   kind: SetKind;
   rows: T[];
   onLoad: (rows: T[]) => void;
+  /** append instead of replace; defaults to onLoad([...rows, ...added]) */
+  onAdd?: (rows: T[]) => void;
 };
 
 export function SetBar<T>({ kind, rows, onLoad }: Props<T>) {
