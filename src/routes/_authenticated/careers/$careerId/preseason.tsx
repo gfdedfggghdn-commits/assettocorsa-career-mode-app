@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useCareer, useGlobalTracks, useSaveCareer, useUpsertTrack } from "@/lib/career/api";
+import { useCareer, useSaveCareer } from "@/lib/career/api";
 import {
   PLAYER_TEAM_ID,
   type CareerData,
@@ -253,7 +253,7 @@ function startSeason(
     results: [],
     driverTeams,
     majorSponsorId: next.pendingMajorSponsorId,
-    minorSponsorIds: Array.from({ length: 7 }, () => null),
+    minorSponsorIds: Array.from({ length: 7 }, (_, i) => previous?.minorSponsorIds[i] ?? null),
     teamMateId: next.pendingTeamMateId,
     powerUnitId: powerUnitId,
     contractWindowMode: windowMode,
@@ -277,9 +277,6 @@ function PhaseOne({
   patch: (fn: (d: CareerData) => void) => void;
   isFirstSeason: boolean;
 }) {
-  const { data: library } = useGlobalTracks();
-  const upsertTrack = useUpsertTrack();
-
   const driverFields: Field<Driver>[] = [
     { key: "firstName", label: "Name" },
     { key: "lastName", label: "Surname" },
@@ -288,7 +285,6 @@ function PhaseOne({
     { key: "pace", label: "Pace", type: "number", width: "6rem" },
     { key: "aggressiveness", label: "Aggression", type: "number", width: "6rem" },
     { key: "f1Years", label: "F1 years", type: "number", width: "6rem" },
-    { key: "contractCost", label: "Contract cost", type: "number" },
   ];
 
   const puOptions = draft.db.powerUnits.map((p) => ({ value: p.id, label: p.name }));
@@ -439,7 +435,9 @@ function PhaseOne({
             options: draft.db.teams.map((t) => ({ value: t.id, label: t.name || "Unnamed" })),
           },
           { key: "raceReward", label: "Race income", type: "number" },
+          { key: "goalBonus", label: "Goal bonus", type: "number" },
           { key: "minCompetitiveness", label: "Min comp.", type: "number", width: "6rem" },
+          { key: "operationsUnlock", label: "Ops unlock", type: "number", width: "6rem" },
         ]}
         rows={draft.db.minorSponsors}
         makeEmpty={() => ({
@@ -450,8 +448,10 @@ function PhaseOne({
           objectiveType: "FINISH_POSITION",
           objectivePosition: 20,
           objectiveTeamId: "",
-          raceReward: 100000,
+          raceReward: 50000,
+          goalBonus: 30000,
           minCompetitiveness: 0,
+          operationsUnlock: 0,
         })}
         onChange={(rows) => patch((d) => void (d.db.minorSponsors = rows))}
         extra={
@@ -476,44 +476,11 @@ function PhaseOne({
         makeEmpty={() => ({ id: uid(), country: "", city: "", acExactId: "", acApproxId: "" })}
         onChange={(rows) => patch((d) => void (d.db.tracks = rows))}
         extra={
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                const rows: Track[] = (library ?? []).map((t) => ({
-                  id: t.id,
-                  country: t.country,
-                  city: t.city,
-                  acExactId: t.ac_exact_id,
-                  acApproxId: t.ac_approx_id,
-                }));
-                patch((d) => void (d.db.tracks = rows));
-                toast.success(`Loaded ${rows.length} tracks from your library.`);
-              }}
-            >
-              <Download className="mr-1 size-4" /> From library
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={async () => {
-                for (const t of draft.db.tracks) {
-                  const known = (library ?? []).some((l) => l.id === t.id);
-                  await upsertTrack.mutateAsync({
-                    ...(known ? { id: t.id } : {}),
-                    country: t.country,
-                    city: t.city,
-                    ac_exact_id: t.acExactId,
-                    ac_approx_id: t.acApproxId,
-                  });
-                }
-                toast.success("Track library updated.");
-              }}
-            >
-              <Upload className="mr-1 size-4" /> To library
-            </Button>
-          </div>
+          <SetBar
+            kind="tracks"
+            rows={draft.db.tracks}
+            onLoad={(rows) => patch((d) => void (d.db.tracks = rows))}
+          />
         }
       />
 
