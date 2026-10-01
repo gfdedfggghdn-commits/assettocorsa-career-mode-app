@@ -362,12 +362,17 @@ export function evaluateMinorSponsors(
         .filter((v): v is number => v != null);
       met = myBest != null && rivals.length > 0 && rivals.some((r) => myBest < r);
     }
-    out.push({ id: s.id, name: s.name, met, reward: s.raceReward });
+    out.push({
+      id: s.id,
+      name: s.name,
+      met,
+      reward: (s.raceReward || 0) + (met ? s.goalBonus || 0 : 0),
+    });
   }
   return out;
 }
 
-/** Income for a single race: major sponsor retainer plus every minor sponsor whose goal was met. */
+/** Income for a single race: major sponsor retainer plus each minor sponsor's race income and any goal bonus earned. */
 export function raceIncome(
   data: CareerData,
   season: SeasonRecord,
@@ -376,9 +381,7 @@ export function raceIncome(
   const major = data.db.majorSponsors.find((s) => s.id === season.majorSponsorId);
   let income = major?.weeklyIncome ?? 0;
   if (!positions) return income;
-  for (const o of evaluateMinorSponsors(data, season, positions)) {
-    if (o.met) income += o.reward;
-  }
+  for (const o of evaluateMinorSponsors(data, season, positions)) income += o.reward;
   return income;
 }
 
