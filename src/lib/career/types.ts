@@ -40,7 +40,10 @@ export type MinorSponsor = {
   objectivePosition?: number;
   /** team whose drivers you must beat (AHEAD_OF_TEAM) */
   objectiveTeamId?: string;
+  /** paid every race while contracted */
   raceReward: number;
+  /** extra paid for every race where the goal is met */
+  goalBonus?: number;
   minCompetitiveness: number;
   operationsUnlock?: number;
 };

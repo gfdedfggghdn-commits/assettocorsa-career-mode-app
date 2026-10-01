@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EntityEditor } from "@/components/career/EntityEditor";
+import { ContractCostEditor } from "@/components/career/ContractCostEditor";
 import { SetBar } from "@/components/career/SetBar";
 import { uid } from "@/lib/career/engine";
 import type {
@@ -9,6 +10,7 @@ import type {
   Driver,
   MajorSponsor,
   MinorSponsor,
+  PlayerName,
   PowerUnit,
   PrizeMoneyRow,
   Team,
@@ -88,7 +90,6 @@ export function DatabasesPanel({ data, update }: Props) {
           { key: "pace", label: "Pace", type: "number", width: "6rem" },
           { key: "aggressiveness", label: "Aggression", type: "number", width: "6rem" },
           { key: "f1Years", label: "F1 years", type: "number", width: "6rem" },
-          { key: "contractCost", label: "Contract cost", type: "number" },
         ]}
         rows={db.drivers}
         makeEmpty={() => ({
@@ -100,7 +101,6 @@ export function DatabasesPanel({ data, update }: Props) {
           pace: 50,
           aggressiveness: 50,
           f1Years: 0,
-          contractCost: 1000000,
         })}
         onChange={(rows) => patch((d) => void (d.drivers = rows))}
         extra={<SetBar kind="drivers" rows={db.drivers} onLoad={(rows) => patch((d) => void (d.drivers = rows))} />}
@@ -202,7 +202,9 @@ export function DatabasesPanel({ data, update }: Props) {
           { key: "objectivePosition", label: "Position", type: "number", width: "6rem" },
           { key: "objectiveTeamId", label: "Rival team", type: "select", width: "12rem", options: teamOptions },
           { key: "raceReward", label: "Race income", type: "number" },
+          { key: "goalBonus", label: "Goal bonus", type: "number" },
           { key: "minCompetitiveness", label: "Min comp.", type: "number", width: "6rem" },
+          { key: "operationsUnlock", label: "Ops unlock", type: "number", width: "6rem" },
         ]}
         rows={db.minorSponsors}
         makeEmpty={() => ({
@@ -213,8 +215,10 @@ export function DatabasesPanel({ data, update }: Props) {
           objectiveType: "FINISH_POSITION",
           objectivePosition: 20,
           objectiveTeamId: "",
-          raceReward: 100000,
+          raceReward: 50000,
+          goalBonus: 30000,
           minCompetitiveness: 0,
+          operationsUnlock: 0,
         })}
         onChange={(rows) => patch((d) => void (d.minorSponsors = rows))}
         extra={
@@ -239,6 +243,30 @@ export function DatabasesPanel({ data, update }: Props) {
         makeEmpty={() => ({ id: uid(), country: "", city: "", acExactId: "", acApproxId: "" })}
         onChange={(rows) => patch((d) => void (d.tracks = rows))}
         extra={<SetBar kind="tracks" rows={db.tracks} onLoad={(rows) => patch((d) => void (d.tracks = rows))} />}
+      />
+
+      <EntityEditor<PlayerName>
+        title="Your driver names"
+        description="Names you race under, so result files can spot you. They never appear in the driver market."
+        fields={[
+          { key: "name", label: "Name in the game", width: "16rem" },
+          { key: "nationality", label: "Nationality", width: "12rem" },
+        ]}
+        rows={db.playerNames}
+        makeEmpty={() => ({ id: uid(), name: "", nationality: "" })}
+        onChange={(rows) => patch((d) => void (d.playerNames = rows))}
+        extra={
+          <SetBar
+            kind="playerNames"
+            rows={db.playerNames}
+            onLoad={(rows) => patch((d) => void (d.playerNames = rows))}
+          />
+        }
+      />
+
+      <ContractCostEditor
+        value={db.contractCostBase}
+        onChange={(n) => patch((d) => void (d.contractCostBase = n))}
       />
 
       <EntityEditor<PrizeRow>
