@@ -140,7 +140,7 @@ function DriverTable({
 }: {
   data: CareerData;
   season: SeasonRecord;
-  onPick?: (r: StandingRow) => void;
+  onPick?: ((r: StandingRow) => void) | undefined;
 }) {
   const rows = driverStandings(data, season);
   return (
