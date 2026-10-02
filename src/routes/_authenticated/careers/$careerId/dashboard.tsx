@@ -114,7 +114,14 @@ function DashboardPage() {
         </div>
         <div className="text-right">
           <p className="label-caps">Budget</p>
-          <p className="headline text-3xl">{money(data.cash)}</p>
+          <p className="headline text-3xl">
+            {money(data.cash)}
+            {done > 0 && data.lastRaceEarnings != null && (
+              <span className="ml-2 align-middle font-mono text-sm text-success">
+                +{money(data.lastRaceEarnings)}
+              </span>
+            )}
+          </p>
         </div>
       </header>
 
