@@ -12,6 +12,7 @@ import {
   type CareerData,
   type CareerState,
   type RaceResult,
+  type SeasonRecord,
 } from "./types";
 
 export type UploadOutcome = {
@@ -95,12 +96,27 @@ export function processResultFile(
   }
   if (position === 0) throw new Error("None of the drivers in this file match your drivers database.");
 
+  return applyRaceResult(next, season, target.round, track.id, track.country, positions, parsed.sourceKey);
+}
+
+/** Records a result for a round (mutates `next`) and works out money, sponsors and windows. */
+export function applyRaceResult(
+  next: CareerData,
+  season: SeasonRecord,
+  round: number,
+  trackId: string,
+  country: string,
+  positions: Record<string, number>,
+  sourceKey: string,
+): UploadOutcome {
+  const target = { round };
+  const track = { id: trackId, country };
   const result: RaceResult = {
     round: target.round,
     trackId: track.id,
     positions,
     uploadedAt: new Date().toISOString(),
-    sourceKey: parsed.sourceKey,
+    sourceKey,
   };
   season.results.push(result);
   season.results.sort((a, b) => a.round - b.round);
@@ -109,6 +125,7 @@ export function processResultFile(
   const earned = raceIncome(next, season, positions);
   next.cash += earned;
   next.lastRaceEarnings = earned;
+  result.earned = earned;
   captureSnapshot(next, season);
   const metCount = outcomes.filter((o) => o.met).length;
 

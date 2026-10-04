@@ -10,6 +10,9 @@ import { StandingsPanel } from "@/components/career/StandingsPanel";
 import { DriverMarketPanel } from "@/components/career/DriverMarketPanel";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { CalendarCog, Palette } from "lucide-react";
+import { TeamDetailsPanel } from "@/components/career/TeamDetailsPanel";
+import { CalendarDebugPanel } from "@/components/career/CalendarDebugPanel";
 import { ArrowLeft, Database, Flag, LineChart, Upload, Users, Wrench } from "lucide-react";
 import { DatabasesPanel } from "@/components/career/DatabasesPanel";
 
@@ -30,13 +33,15 @@ export const Route = createFileRoute("/_authenticated/careers/$careerId/dashboar
   component: DashboardPage,
 });
 
-type Tab = "development" | "sponsorship" | "standings" | "market" | "databases";
+type Tab = "development" | "sponsorship" | "standings" | "market" | "team" | "calendar" | "databases";
 
 const TABS: { key: Tab; label: string; icon: typeof Wrench }[] = [
   { key: "development", label: "Development", icon: Wrench },
   { key: "sponsorship", label: "Sponsorship", icon: LineChart },
   { key: "standings", label: "Standings", icon: Flag },
   { key: "market", label: "Driver market", icon: Users },
+  { key: "team", label: "Team details", icon: Palette },
+  { key: "calendar", label: "Calendar debug", icon: CalendarCog },
   { key: "databases", label: "Databases", icon: Database },
 ];
 
@@ -195,10 +200,12 @@ function DashboardPage() {
           {tab === "sponsorship" && (
             <SponsorshipPanel data={data} state={state} update={update} apply={apply} />
           )}
-          {tab === "standings" && <StandingsPanel data={data} />}
+          {tab === "standings" && <StandingsPanel data={data} update={update} />}
           {tab === "market" && (
             <DriverMarketPanel data={data} state={state} update={update} apply={apply} />
           )}
+          {tab === "team" && <TeamDetailsPanel data={data} update={update} />}
+          {tab === "calendar" && <CalendarDebugPanel data={data} state={state} apply={apply} />}
           {tab === "databases" && <DatabasesPanel data={data} update={update} />}
         </section>
       </div>

@@ -139,7 +139,7 @@ export function teamAverageFinish(season: SeasonRecord): Record<string, number> 
   const sums: Record<string, { total: number; count: number }> = {};
   for (const race of season.results) {
     for (const [driverId, pos] of Object.entries(race.positions)) {
-      const teamId = season.driverTeams[driverId];
+      const teamId = driverTeamOf(season, driverId);
       if (!teamId) continue;
       sums[teamId] ??= { total: 0, count: 0 };
       sums[teamId]!.total += pos;
@@ -221,6 +221,12 @@ export function seasonDriverIds(data: CareerData, season: SeasonRecord): string[
   return [...ids];
 }
 
+/** Team a driver races for this season; the player always drives for their own team. */
+export function driverTeamOf(season: SeasonRecord, id: string): string | undefined {
+  if (id === PLAYER_DRIVER_ID) return PLAYER_TEAM_ID;
+  return season.driverTeams[id];
+}
+
 export function driverStandings(data: CareerData, season: SeasonRecord): StandingRow[] {
   const rounds = season.calendar.length;
   const rows: StandingRow[] = seasonDriverIds(data, season).map((id) => {
@@ -237,7 +243,7 @@ export function driverStandings(data: CareerData, season: SeasonRecord): Standin
         raced = true;
       }
     }
-    const teamId = season.driverTeams[id];
+    const teamId = driverTeamOf(season, id);
     const info = seasonDriverInfo(data, season, id);
     const team = seasonTeamInfo(data, season, teamId);
     return {
@@ -253,7 +259,7 @@ export function driverStandings(data: CareerData, season: SeasonRecord): Standin
     } as StandingRow & { _raced: boolean };
   });
   return rows
-    .filter((r) => (r as StandingRow & { _raced: boolean })._raced || season.driverTeams[r.id])
+    .filter((r) => (r as StandingRow & { _raced: boolean })._raced || driverTeamOf(season, r.id))
     .sort(compareRows);
 }
 
@@ -282,7 +288,7 @@ export function constructorStandings(data: CareerData, season: SeasonRecord): St
       let pts = 0;
       let scored = false;
       for (const [driverId, pos] of Object.entries(race.positions)) {
-        if (season.driverTeams[driverId] === teamId) {
+        if (driverTeamOf(season, driverId) === teamId) {
           pts += pointsFor(pos);
           scored = true;
           if (pos >= 1 && pos <= COUNTBACK_DEPTH) posCounts[pos - 1] = (posCounts[pos - 1] ?? 0) + 1;
