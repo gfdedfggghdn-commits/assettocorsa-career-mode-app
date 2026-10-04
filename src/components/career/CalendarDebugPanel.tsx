@@ -84,7 +84,10 @@ export function CalendarDebugPanel({
     picks.forEach((id, i) => {
       if (id && positions[id] == null) positions[id] = i + 1;
     });
-    if (!Object.keys(positions).length) return toast.error("Pick at least one finisher.");
+    if (!Object.keys(positions).length) {
+      toast.error("Pick at least one finisher.");
+      return;
+    }
     const round = entering;
     let msg = "";
     let nextState: CareerState = state;
