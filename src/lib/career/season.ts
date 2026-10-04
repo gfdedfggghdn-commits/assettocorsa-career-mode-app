@@ -125,6 +125,7 @@ export function applyRaceResult(
   const earned = raceIncome(next, season, positions);
   next.cash += earned;
   next.lastRaceEarnings = earned;
+  result.earned = earned;
   captureSnapshot(next, season);
   const metCount = outcomes.filter((o) => o.met).length;
 

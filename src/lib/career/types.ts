@@ -136,6 +136,10 @@ export type RaceResult = {
   positions: Record<string, number>;
   uploadedAt: string;
   sourceKey: string;
+  /** money paid out for this race (taken back if the result is removed) */
+  earned?: number;
+  /** entered by hand in calendar debugging mode */
+  manual?: boolean;
 };
 
 /** Frozen copy of everything a past season referenced, so history never breaks. */
