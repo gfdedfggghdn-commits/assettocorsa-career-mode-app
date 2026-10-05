@@ -56,7 +56,13 @@ function CompletePage() {
   const prize = prizeMoneyFor(data, myPos);
   const newBalance = data.cash + reward + prize;
 
+  const alreadyPaid = career.state !== "SEASON_COMPLETE";
+
   const finish = async () => {
+    if (alreadyPaid) {
+      navigate({ to: "/careers/$careerId/dashboard", params: { careerId } });
+      return;
+    }
     const next: CareerData = structuredClone(data);
     const sea = next.seasons[next.seasons.length - 1];
     if (sea) {
@@ -65,9 +71,16 @@ function CompletePage() {
     }
     next.cash = newBalance;
     next.lastRaceEarnings = null;
-    next.preseasonPhase = 1;
-    await save.mutateAsync({ data: next, state: "PRESEASON", season: career.season + 1 });
-    navigate({ to: "/careers/$careerId/preseason", params: { careerId } });
+    // +1 F1 year for every driver who raced at least 25% of the season's rounds
+    if (sea) {
+      const needed = Math.max(1, Math.ceil(sea.calendar.length * 0.25));
+      for (const d of next.db.drivers) {
+        const raced = sea.results.filter((r) => r.positions[d.id] != null).length;
+        if (raced >= needed) d.f1Years = (d.f1Years || 0) + 1;
+      }
+    }
+    await save.mutateAsync({ data: next, state: "END_OF_SEASON_SPONSOR_WINDOW" });
+    navigate({ to: "/careers/$careerId/dashboard", params: { careerId } });
   };
 
   const pos = (p: number | null) => (p ? `P${p}` : "Unclassified");
@@ -89,7 +102,7 @@ function CompletePage() {
             <p className="headline text-2xl">{sponsor.name}</p>
             <p className="text-sm text-muted-foreground">{sponsor.seasonObjective || "No objective"}</p>
             <label className="flex items-center gap-3 text-sm">
-              <Switch checked={objectiveMet} onCheckedChange={setObjectiveMet} aria-label="Objective achieved" />
+              <Switch disabled={alreadyPaid} checked={objectiveMet} onCheckedChange={setObjectiveMet} aria-label="Objective achieved" />
               Goal achieved
             </label>
             {objectiveMet && (
@@ -109,7 +122,7 @@ function CompletePage() {
       <StandingsPanel data={data} />
 
       <Button onClick={finish} disabled={save.isPending}>
-        Start pre-season {career.season + 1}
+        {alreadyPaid ? "Back to the dashboard" : "Collect payouts — choose next season's sponsor"}
       </Button>
     </main>
   );

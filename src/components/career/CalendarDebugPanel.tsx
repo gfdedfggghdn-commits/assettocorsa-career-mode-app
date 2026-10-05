@@ -35,10 +35,12 @@ export function CalendarDebugPanel({
     ...Object.entries(season.driverTeams)
       .filter(([id, t]) => t && id !== PLAYER_DRIVER_ID)
       .map(([id]) => id),
+    ...data.db.drivers.filter((d) => !season.driverTeams[d.id]).map((d) => d.id),
   ];
   const label = (id: string) => {
     const info = seasonDriverInfo(data, season, id);
-    return `${info.name} (${id === PLAYER_DRIVER_ID ? "You" : teamLabel(data, driverTeamOf(season, id))})`;
+    const team = driverTeamOf(season, id);
+    return `${info.name} (${id === PLAYER_DRIVER_ID ? "You" : team ? teamLabel(data, team) : "Free agent"})`;
   };
 
   const removeResult = (round: number) => {
@@ -74,7 +76,7 @@ export function CalendarDebugPanel({
     });
 
   const openEntry = (round: number) => {
-    setPicks(Array.from({ length: grid.length }, () => ""));
+    setPicks(Array.from({ length: grid.length - data.db.drivers.filter((d) => !season.driverTeams[d.id]).length }, () => ""));
     setEntering(round);
   };
 
@@ -220,6 +222,9 @@ export function CalendarDebugPanel({
                 </select>
               </div>
             ))}
+            <Button size="sm" variant="ghost" onClick={() => setPicks([...picks, ""])}>
+              <Plus className="mr-1 size-4" /> Add a position (free agents are in the list)
+            </Button>
           </div>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setEntering(null)}>

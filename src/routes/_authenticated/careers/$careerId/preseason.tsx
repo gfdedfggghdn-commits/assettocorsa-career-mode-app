@@ -246,6 +246,8 @@ function startSeason(
   }
   const pu = next.db.powerUnits.find((p) => p.id === powerUnitId);
   if (pu) next.cash -= pu.cost;
+  // switching supplier wipes every power unit upgrade
+  if (previous && previous.powerUnitId && previous.powerUnitId !== powerUnitId) next.development.powerUnit = 0;
 
   const season: SeasonRecord = {
     number: seasonNumber,

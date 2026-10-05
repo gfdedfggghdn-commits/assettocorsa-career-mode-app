@@ -85,7 +85,7 @@ export function DriverMarketPanel({
       }
       next.pendingTeamMateId = d.id;
       next.cash -= cost;
-    }, "ACTIVE_SEASON");
+    }, endWindow ? "PRESEASON" : "ACTIVE_SEASON");
     toast.success(cost === 0 ? `${driverName(d)} extended for free.` : `${driverName(d)} signed for ${money(cost)}.`);
     setSelected(null);
     setConfirming(false);
@@ -99,7 +99,7 @@ export function DriverMarketPanel({
           <p className="text-sm text-muted-foreground">
             {midWindow
               ? "Extending your current team mate is free. Signing anyone else costs their full fee."
-              : "Pick your team mate for next season. Keeping your current driver still costs the full fee."}
+              : "Pick your team mate for next season. Keeping your current driver still costs the full fee. Signing takes you to pre-season."}
           </p>
         </div>
       )}

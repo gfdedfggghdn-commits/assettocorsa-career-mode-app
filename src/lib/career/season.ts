@@ -137,8 +137,8 @@ export function applyRaceResult(
 
   if (isFinal) {
     season.completed = true;
-    nextState = "END_OF_SEASON_SPONSOR_WINDOW";
-    message = `Final round saved. Standings are locked in — choose your major sponsor for next season.`;
+    nextState = "SEASON_COMPLETE";
+    message = `Final round saved. Here is your season summary.`;
   } else if (
     season.contractWindowMode === "MID_AND_END" &&
     !season.midSeasonWindowUsed &&

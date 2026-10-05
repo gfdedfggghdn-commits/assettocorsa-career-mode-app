@@ -6,7 +6,7 @@ import {
   type StandingRow,
 } from "@/lib/career/engine";
 import { Flag, countryCode } from "@/lib/career/flags";
-import { PLAYER_DRIVER_ID, type CareerData, type SeasonRecord } from "@/lib/career/types";
+import { PLAYER_DRIVER_ID, PLAYER_TEAM_ID, type CareerData, type SeasonRecord } from "@/lib/career/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -80,7 +80,11 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
             <DialogTitle className="headline text-2xl">Where does {editing?.label} drive now?</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            {[...data.db.teams, { id: "", name: "Free Agent", colour: "transparent" }].map((t) => (
+            {[
+              { id: PLAYER_TEAM_ID, name: data.team.name || "My Team", colour: data.team.colour || "#e10600" },
+              ...data.db.teams,
+              { id: "", name: "Free Agent", colour: "transparent" },
+            ].map((t) => (
               <Button
                 key={t.id || "free"}
                 variant="secondary"
@@ -90,6 +94,8 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
                   update!((next) => {
                     const sea = next.seasons[next.seasons.length - 1];
                     if (!sea) return;
+                    if (sea.teamMateId === id && t.id !== PLAYER_TEAM_ID) sea.teamMateId = null;
+                    if (t.id === PLAYER_TEAM_ID) sea.teamMateId = id;
                     if (t.id) sea.driverTeams[id] = t.id;
                     else delete sea.driverTeams[id];
                   });
@@ -143,6 +149,7 @@ function DriverTable({
   onPick?: ((r: StandingRow) => void) | undefined;
 }) {
   const rows = driverStandings(data, season);
+  const leader = rows[0]?.total ?? 0;
   return (
     <div className="panel overflow-x-auto">
       <table className="w-full border-collapse text-sm">
@@ -153,6 +160,7 @@ function DriverTable({
             <th className="label-caps px-3 py-2 text-left">Team</th>
             <RoundHeaders data={data} season={season} />
             <th className="label-caps px-3 py-2 text-right">Pts</th>
+            <th className="label-caps px-3 py-2 text-right">Gap</th>
           </tr>
         </thead>
         <tbody>
@@ -185,6 +193,9 @@ function DriverTable({
                   </td>
                 ))}
                 <td className="px-3 py-1 text-right font-mono font-bold">{r.total}</td>
+                <td className="px-3 py-1 text-right font-mono text-muted-foreground">
+                  {rank === 0 ? "—" : r.total - leader}
+                </td>
               </tr>
             );
           })}

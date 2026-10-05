@@ -65,6 +65,18 @@ export function DevelopmentPanel({
     toast.success(`Upgrade bought for ${money(cost)}.`);
   };
 
+  const sell = (key: keyof Development) => {
+    const level = dev[key];
+    if (level <= 0) return;
+    const after = { ...dev, [key]: level - 1 };
+    const refund = Math.round(upgradeCost(level - 1, after, key) * 0.75);
+    update((d) => {
+      d.development[key] -= 1;
+      d.cash += refund;
+    });
+    toast.success(`Upgrade sold for ${money(refund)}.`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="panel flex flex-wrap items-center gap-8 p-5">
@@ -107,6 +119,12 @@ export function DevelopmentPanel({
                   >
                     {maxed ? "Fully upgraded" : `Upgrade — ${money(cost)}`}
                   </Button>
+                  {level > 0 && (
+                    <Button className="mt-2 w-full" variant="ghost" size="sm" onClick={() => sell(s.key)}>
+                      Sell one upgrade — get back{" "}
+                      {money(upgradeCost(level - 1, { ...dev, [s.key]: level - 1 }, s.key) * 0.75)}
+                    </Button>
+                  )}
                 </div>
               );
             })}
