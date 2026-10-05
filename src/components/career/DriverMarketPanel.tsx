@@ -99,7 +99,7 @@ export function DriverMarketPanel({
           <p className="text-sm text-muted-foreground">
             {midWindow
               ? "Extending your current team mate is free. Signing anyone else costs their full fee."
-              : "Pick your team mate for next season. Keeping your current driver still costs the full fee."}
+              : "Pick your team mate for next season. Keeping your current driver still costs the full fee. Signing takes you to pre-season."}
           </p>
         </div>
       )}

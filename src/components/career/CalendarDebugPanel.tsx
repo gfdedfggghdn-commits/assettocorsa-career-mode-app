@@ -222,6 +222,9 @@ export function CalendarDebugPanel({
                 </select>
               </div>
             ))}
+            <Button size="sm" variant="ghost" onClick={() => setPicks([...picks, ""])}>
+              <Plus className="mr-1 size-4" /> Add a position (free agents are in the list)
+            </Button>
           </div>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setEntering(null)}>

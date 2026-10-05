@@ -150,6 +150,7 @@ export function SponsorshipPanel({
           <DialogHeader>
             <DialogTitle className="headline text-2xl">Available minor sponsors</DialogTitle>
           </DialogHeader>
+          <p className="label-caps">Name - race income - goal bonus - goal</p>
           <div className="space-y-2">
             {unlockedMinors.length === 0 && (
               <p className="text-sm text-muted-foreground">
@@ -166,11 +167,15 @@ export function SponsorshipPanel({
                   disabled={taken}
                   onClick={() => pickMinor(s)}
                 >
-                  <span className="text-left">
-                    <span className="headline block text-base">{s.name}</span>
-                    <span className="text-xs text-muted-foreground">{s.raceObjective}</span>
+                  <span className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 text-left text-sm">
+                    <span className="headline text-base">{s.name}</span>
+                    <span className="text-muted-foreground">-</span>
+                    <span className="font-mono">{money(s.raceReward)}</span>
+                    <span className="text-muted-foreground">-</span>
+                    <span className="font-mono text-success">{money(s.goalBonus ?? 0)}</span>
+                    <span className="text-muted-foreground">-</span>
+                    <span>{goalText(data, s)}</span>
                   </span>
-                  <span className="font-mono text-xs">{money(s.raceReward)}</span>
                 </Button>
               );
             })}
@@ -179,4 +184,25 @@ export function SponsorshipPanel({
       </Dialog>
     </div>
   );
+}
+
+const ordinal = (n: number) => {
+  const v = n % 100;
+  const suf = v >= 11 && v <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th";
+  return `${n}${suf}`;
+};
+
+function goalText(data: CareerData, s: MinorSponsor): string {
+  switch (s.objectiveType ?? "MANUAL") {
+    case "FINISH_POSITION":
+      return `Finish ${ordinal(s.objectivePosition ?? 20)} or better`;
+    case "AHEAD_OF_TEAM": {
+      const t = data.db.teams.find((x) => x.id === s.objectiveTeamId);
+      return `Finish ahead of ${t?.name || "rival team"}`;
+    }
+    case "AHEAD_OF_TEAMMATE":
+      return "Finish ahead of your team mate";
+    default:
+      return "Always pay";
+  }
 }
