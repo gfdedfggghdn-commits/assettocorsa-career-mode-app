@@ -85,7 +85,7 @@ export function DriverMarketPanel({
       }
       next.pendingTeamMateId = d.id;
       next.cash -= cost;
-    }, "ACTIVE_SEASON");
+    }, endWindow ? "PRESEASON" : "ACTIVE_SEASON");
     toast.success(cost === 0 ? `${driverName(d)} extended for free.` : `${driverName(d)} signed for ${money(cost)}.`);
     setSelected(null);
     setConfirming(false);
