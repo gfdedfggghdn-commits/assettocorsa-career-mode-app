@@ -1,24 +1,29 @@
 # AC MyTeam Career app
 
-Implement exactly the screenshot and nothing else
+This app aims to recreate the MyTeam Career mode feature from Codemasters' F1 games to Assetto Corsa! Just select the correct race result JSON file and the app will automatically calculate scores and incoming sponsor money. 
 
-This project was built with [Lovable](https://lovable.dev).
+## Homepage
+<img width="1920" height="958" alt="image" src="https://github.com/user-attachments/assets/64c20293-dc7e-4dce-86a8-551b19d96c75" />
 
-## Build with Lovable
+## The dashboard
+The development tab allows you to upgrade your car and team. **Every upgrade in the Power Unit or Chassis departments will tell you what to set the restrictor and ballast to, assuming the grid is BoP'd, while Operations allows you to sign better sponsors and Infrastructure reduces the cost of every other upgrade.** 
+<img width="1920" height="957" alt="image" src="https://github.com/user-attachments/assets/bf334ea9-1a5f-4c81-ac22-7103b5019a34" />
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/81970b03-d091-4738-b7bb-3b967a68e1b1).
+View your current sponsors and sign new ones!
+<img width="1920" height="960" alt="image" src="https://github.com/user-attachments/assets/e6e48019-3994-4daa-980c-4bb56942b34a" />
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+A full overview of the standings, both drivers' and constructors', of every season you have completed up until now.
+<img width="1918" height="956" alt="image" src="https://github.com/user-attachments/assets/6b8bfba5-1829-4497-a9cf-3f143d1e985a" />
+<img width="1920" height="958" alt="image" src="https://github.com/user-attachments/assets/f4274c69-6b17-4629-b188-97fc4e78d7a6" />
 
-## Development
+View the driver market anytime and look up their driver stats
+<img width="1920" height="958" alt="image" src="https://github.com/user-attachments/assets/2c1e4c20-79e1-4ae5-89c5-505dab674c08" />
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Edit your team details
+<img width="1920" height="959" alt="image" src="https://github.com/user-attachments/assets/ac07ae5b-6cee-4cd2-b7c9-3eb6d2d96b86" />
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+While all of these databases are edited conveniently in the app!
+<img width="1461" height="841" alt="image" src="https://github.com/user-attachments/assets/193a23be-a8e0-4330-93a6-44a730fa97be" />
+
+## Disclaimer
+The app is vibe coded (with Lovable AI). If you have a problem with that, I get it. But I can't code, and I have asked around for this idea to be coded but I'm broke so I cannot hire anyone. So please, if you have a problem with the fact that it's made with AI I get it, I would probably too, but do not go around and hate on it. At least I'm honest, right?
