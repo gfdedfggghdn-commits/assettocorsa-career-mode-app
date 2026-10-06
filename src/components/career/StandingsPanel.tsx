@@ -82,7 +82,7 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
           <div className="space-y-2">
             {[
               { id: PLAYER_TEAM_ID, name: data.team.name || "My Team", colour: data.team.colour || "#e10600" },
-              ...data.db.teams,
+              ...data.db.teams.filter((t) => t.active !== false),
               { id: "", name: "Free Agent", colour: "transparent" },
             ].map((t) => (
               <Button

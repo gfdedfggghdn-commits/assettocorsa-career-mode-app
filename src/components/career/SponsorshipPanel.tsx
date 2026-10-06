@@ -116,10 +116,20 @@ export function SponsorshipPanel({
             return s ? (
               <div key={i} className="panel p-4">
                 <h4 className="headline text-lg">{s.name}</h4>
-                <p className="text-xs text-muted-foreground">{s.raceObjective}</p>
-                <p className="mt-2 font-mono text-xs text-muted-foreground">
-                  {money(s.raceReward)} per race
-                </p>
+                <dl className="mt-2 space-y-1 text-xs">
+                  <div>
+                    <dt className="label-caps">Race income</dt>
+                    <dd className="font-mono">{money(s.raceReward)}</dd>
+                  </div>
+                  <div>
+                    <dt className="label-caps">Goal type</dt>
+                    <dd>{goalText(data, s)}</dd>
+                  </div>
+                  <div>
+                    <dt className="label-caps">Goal bonus</dt>
+                    <dd className="font-mono text-success">{money(s.goalBonus ?? 0)}</dd>
+                  </div>
+                </dl>
                 <button
                   className="label-caps mt-3 hover:text-foreground"
                   onClick={() =>
