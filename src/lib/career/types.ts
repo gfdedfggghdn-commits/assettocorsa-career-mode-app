@@ -68,6 +68,8 @@ export type Team = {
   nationality: string;
   powerUnitId: string;
   colour: string;
+  /** inactive teams stay in the database but are skipped when picking teams */
+  active?: boolean;
 };
 
 export type PowerUnit = {
@@ -140,6 +142,8 @@ export type RaceResult = {
   earned?: number;
   /** entered by hand in calendar debugging mode */
   manual?: boolean;
+  /** driverId -> teamId at the moment this race was run (points go to that team) */
+  teams?: Record<string, string>;
 };
 
 /** Frozen copy of everything a past season referenced, so history never breaks. */
@@ -171,6 +175,8 @@ export type CareerData = {
   team: {
     name: string;
     colour: string;
+    /** text colour used on the dashboard */
+    secondaryColour?: string;
     description: string;
     startingTierId: string | null;
   };

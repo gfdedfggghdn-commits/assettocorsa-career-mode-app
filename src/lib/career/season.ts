@@ -29,11 +29,11 @@ export function blockedReason(state: CareerState, data: CareerData): string | nu
     return "You must sign a major sponsor for next season before anything else.";
   if (state === "END_OF_SEASON_CONTRACT_WINDOW")
     return "You cannot upload a new race file before you have signed a driver contract.";
-  if (state === "SEASON_COMPLETE") return "This season is finished. Continue to the season summary.";
+  if (state === "SEASON_COMPLETE") return "This season is finished. Continue to the post-season screen.";
   if (state === "PRESEASON") return "Finish the pre-season phases first.";
   const season = currentSeason(data);
   if (season && season.results.length >= season.calendar.length && season.calendar.length > 0)
-    return "Every round of this season has been raced. Continue to the season summary.";
+    return "Every round of this season has been raced. Advance to the post-season screen.";
   return null;
 }
 
@@ -117,6 +117,11 @@ export function applyRaceResult(
     positions,
     uploadedAt: new Date().toISOString(),
     sourceKey,
+    teams: Object.fromEntries(
+      Object.keys(positions)
+        .map((id) => [id, id === PLAYER_DRIVER_ID ? PLAYER_TEAM_ID : (season.driverTeams[id] ?? "")])
+        .filter(([, t]) => t),
+    ),
   };
   season.results.push(result);
   season.results.sort((a, b) => a.round - b.round);
@@ -136,9 +141,7 @@ export function applyRaceResult(
   let message = `Round ${target.round} — ${track.country} saved.`;
 
   if (isFinal) {
-    season.completed = true;
-    nextState = "SEASON_COMPLETE";
-    message = `Final round saved. Here is your season summary.`;
+    message = `Final round saved. Advance to the post-season screen when you're ready.`;
   } else if (
     season.contractWindowMode === "MID_AND_END" &&
     !season.midSeasonWindowUsed &&
