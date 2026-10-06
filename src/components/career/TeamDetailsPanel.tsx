@@ -66,7 +66,7 @@ export function TeamDetailsPanel({
             update((d) => {
               d.team.name = team.name.trim();
               d.team.colour = team.colour;
-              d.team.secondaryColour = team.secondaryColour;
+              d.team.secondaryColour = team.secondaryColour ?? "";
               d.team.description = team.description;
             });
             toast.success("Team details saved.");
