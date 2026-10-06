@@ -1,4 +1,4 @@
-# AC MyTeam Career mode
+# AC MyTeam Career app
 
 Implement exactly the screenshot and nothing else
 
