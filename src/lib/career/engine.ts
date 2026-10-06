@@ -10,6 +10,7 @@ import {
   type CareerDatabases,
   type Development,
   type Driver,
+  type RaceResult,
   type SeasonRecord,
   type SeasonSnapshot,
 } from "./types";
@@ -79,8 +80,13 @@ export function captureSnapshot(data: CareerData, season: SeasonRecord) {
     const d = data.db.drivers.find((x) => x.id === id);
     if (d) snap.drivers[id] = { firstName: d.firstName, lastName: d.lastName, nationality: d.nationality };
   }
+  const used = new Set<string>([
+    ...Object.values(season.driverTeams),
+    ...season.results.flatMap((r) => Object.values(r.teams ?? {})),
+  ]);
+  snap.teams[PLAYER_TEAM_ID] = { name: data.team.name || "My Team", colour: data.team.colour || "#e10600" };
   for (const t of data.db.teams) {
-    if (Object.values(season.driverTeams).includes(t.id)) {
+    if (used.has(t.id)) {
       snap.teams[t.id] = { name: t.name, colour: t.colour };
     }
   }
@@ -112,6 +118,9 @@ export function seasonTeamInfo(
   teamId: string | undefined,
 ): { name: string; colour: string } {
   if (!teamId) return { name: "Free Agent", colour: "transparent" };
+  // finished seasons keep the name and colour each team had that season (rebrands don't rewrite history)
+  const frozen = season.completed ? season.snapshot?.teams[teamId] : undefined;
+  if (frozen) return { name: frozen.name, colour: frozen.colour };
   if (teamId === PLAYER_TEAM_ID) return { name: data.team.name || "My Team", colour: data.team.colour || "#e10600" };
   const live = data.db.teams.find((t) => t.id === teamId);
   if (live) return { name: live.name, colour: live.colour };
@@ -139,7 +148,7 @@ export function teamAverageFinish(season: SeasonRecord): Record<string, number> 
   const sums: Record<string, { total: number; count: number }> = {};
   for (const race of season.results) {
     for (const [driverId, pos] of Object.entries(race.positions)) {
-      const teamId = driverTeamOf(season, driverId);
+      const teamId = resultTeamOf(season, race, driverId);
       if (!teamId) continue;
       sums[teamId] ??= { total: 0, count: 0 };
       sums[teamId]!.total += pos;
@@ -227,6 +236,12 @@ export function driverTeamOf(season: SeasonRecord, id: string): string | undefin
   return season.driverTeams[id];
 }
 
+/** Team a driver scored for in one particular race (falls back to the season line-up). */
+export function resultTeamOf(season: SeasonRecord, race: RaceResult, id: string): string | undefined {
+  if (id === PLAYER_DRIVER_ID) return PLAYER_TEAM_ID;
+  return race.teams?.[id] ?? season.driverTeams[id];
+}
+
 export function driverStandings(data: CareerData, season: SeasonRecord): StandingRow[] {
   const rounds = season.calendar.length;
   const rows: StandingRow[] = seasonDriverIds(data, season).map((id) => {
@@ -277,7 +292,14 @@ export function teamLabel(data: CareerData, teamId: string | undefined): string 
 
 export function constructorStandings(data: CareerData, season: SeasonRecord): StandingRow[] {
   const rounds = season.calendar.length;
-  const teamIds = Array.from(new Set(Object.values(season.driverTeams).filter(Boolean)));
+  const teamIds = Array.from(
+    new Set(
+      [
+        ...Object.values(season.driverTeams),
+        ...season.results.flatMap((r) => Object.values(r.teams ?? {})),
+      ].filter(Boolean),
+    ),
+  );
   if (!teamIds.includes(PLAYER_TEAM_ID)) teamIds.unshift(PLAYER_TEAM_ID);
 
   const rows: StandingRow[] = teamIds.map((teamId) => {
@@ -288,7 +310,7 @@ export function constructorStandings(data: CareerData, season: SeasonRecord): St
       let pts = 0;
       let scored = false;
       for (const [driverId, pos] of Object.entries(race.positions)) {
-        if (driverTeamOf(season, driverId) === teamId) {
+        if (resultTeamOf(season, race, driverId) === teamId) {
           pts += pointsFor(pos);
           scored = true;
           if (pos >= 1 && pos <= COUNTBACK_DEPTH) posCounts[pos - 1] = (posCounts[pos - 1] ?? 0) + 1;

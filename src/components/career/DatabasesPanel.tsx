@@ -113,9 +113,11 @@ export function DatabasesPanel({ data, update }: Props) {
           { key: "nationality", label: "Nationality" },
           { key: "powerUnitId", label: "Power unit", type: "select", options: puOptions },
           { key: "colour", label: "Colour", type: "color", width: "5rem" },
+          { key: "active", label: "Active", type: "switch", width: "5rem" },
         ]}
-        rows={db.teams}
-        makeEmpty={() => ({ id: uid(), name: "", nationality: "", powerUnitId: "", colour: "#888888" })}
+        description="Name and colour apply to the current season. Finished seasons keep the name and colour each team had back then, so you can rebrand a team for a new season."
+        rows={db.teams.map((t) => ({ ...t, active: t.active ?? true }))}
+        makeEmpty={() => ({ id: uid(), name: "", nationality: "", powerUnitId: "", colour: "#888888", active: true })}
         onChange={(rows) => patch((d) => void (d.teams = rows))}
         extra={<SetBar kind="teams" rows={db.teams} onLoad={(rows) => patch((d) => void (d.teams = rows))} />}
       />
@@ -186,7 +188,6 @@ export function DatabasesPanel({ data, update }: Props) {
         fields={[
           { key: "name", label: "Name", width: "12rem" },
           { key: "description", label: "Description", width: "14rem" },
-          { key: "raceObjective", label: "Race objective", width: "12rem" },
           {
             key: "objectiveType",
             label: "Goal type",

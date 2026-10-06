@@ -169,9 +169,9 @@ function Preseason() {
                     ? "Pick what your team starts as."
                     : phase === 3 && !pickedPowerUnit
                       ? "Select a power unit supplier."
-                      : phase === 3 && isFirstSeason && !draft.pendingMajorSponsorId
+                      : phase === 3 && !draft.pendingMajorSponsorId
                         ? "Select a major sponsor."
-                        : phase === 3 && isFirstSeason && !draft.pendingTeamMateId
+                        : phase === 3 && !draft.pendingTeamMateId
                           ? "Select a team mate."
                           : null;
               if (problem) {
@@ -240,10 +240,8 @@ function startSeason(
   const sponsor = next.db.majorSponsors.find((s) => s.id === next.pendingMajorSponsorId);
   if (sponsor) next.cash += sponsor.signingBonus;
 
-  if (seasonNumber === 1) {
-    const teamMate = next.db.drivers.find((d) => d.id === next.pendingTeamMateId);
-    if (teamMate) next.cash -= driverCost(next.db, teamMate);
-  }
+  const teamMate = next.db.drivers.find((d) => d.id === next.pendingTeamMateId);
+  if (teamMate) next.cash -= driverCost(next.db, teamMate);
   const pu = next.db.powerUnits.find((p) => p.id === powerUnitId);
   if (pu) next.cash -= pu.cost;
   // switching supplier wipes every power unit upgrade
@@ -331,9 +329,11 @@ function PhaseOne({
           { key: "nationality", label: "Nationality" },
           { key: "powerUnitId", label: "Power unit", type: "select", options: puOptions },
           { key: "colour", label: "Colour", type: "color", width: "5rem" },
+          { key: "active", label: "Active", type: "switch", width: "5rem" },
         ]}
-        rows={draft.db.teams}
-        makeEmpty={() => ({ id: uid(), name: "", nationality: "", powerUnitId: "", colour: "#888888" })}
+        description="Name and colour apply to the coming season. Finished seasons keep the name and colour each team had back then, so you can rebrand a team here."
+        rows={draft.db.teams.map((t) => ({ ...t, active: t.active ?? true }))}
+        makeEmpty={() => ({ id: uid(), name: "", nationality: "", powerUnitId: "", colour: "#888888", active: true })}
         onChange={(rows) => patch((d) => void (d.db.teams = rows))}
         extra={
           <SetBar
@@ -415,7 +415,6 @@ function PhaseOne({
         fields={[
           { key: "name", label: "Name", width: "12rem" },
           { key: "description", label: "Description", width: "14rem" },
-          { key: "raceObjective", label: "Race objective", width: "12rem" },
           {
             key: "objectiveType",
             label: "Goal type",
@@ -739,6 +738,33 @@ function PhaseTwo({
         </div>
       </div>
 
+      <div className="space-y-2">
+        <Label>Secondary colour (dashboard text)</Label>
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            className="h-11 w-20 cursor-pointer rounded border border-input bg-transparent"
+            value={draft.team.secondaryColour || "#ffffff"}
+            onChange={(e) => patch((d) => void (d.team.secondaryColour = e.target.value))}
+          />
+          <Input
+            className="w-32 font-mono"
+            value={draft.team.secondaryColour ?? ""}
+            placeholder="#ffffff"
+            onChange={(e) => patch((d) => void (d.team.secondaryColour = e.target.value))}
+          />
+          <div
+            className="headline flex h-11 flex-1 items-center rounded px-3"
+            style={{
+              background: `linear-gradient(90deg, ${draft.team.colour}, transparent)`,
+              color: draft.team.secondaryColour || undefined,
+            }}
+          >
+            {draft.team.name || "Your team"}
+          </div>
+        </div>
+      </div>
+
       {isFirstSeason && (
         <div className="space-y-2">
           <Label>Your team starts as</Label>
@@ -787,7 +813,7 @@ function PhaseThree({
   setOffers: (v: string[]) => void;
 }) {
   const comp = competitiveness(draft);
-  const [tab, setTab] = useState<"sponsor" | "pu" | "mate">(isFirstSeason ? "sponsor" : "pu");
+  const [tab, setTab] = useState<"sponsor" | "pu" | "mate">("sponsor");
 
   const unlocked = useMemo(
     () =>
@@ -798,7 +824,7 @@ function PhaseThree({
   );
 
   useEffect(() => {
-    if (offers === null && isFirstSeason) {
+    if (offers === null) {
       const pool = unlocked.slice();
       const picked: string[] = [];
       while (picked.length < 8 && pool.length) {
@@ -807,9 +833,17 @@ function PhaseThree({
       }
       setOffers(picked);
     }
-  }, [offers, unlocked, isFirstSeason, setOffers]);
+  }, [offers, unlocked, setOffers]);
 
-  const assigned = new Set(draft.db.season1.flatMap((e) => e.driverIds));
+  // season 1: anyone not in the season-1 line-up; later seasons: anyone without a team (or your current team mate)
+  const previous = draft.seasons[draft.seasons.length - 1];
+  const assigned = new Set(
+    isFirstSeason || !previous
+      ? draft.db.season1.flatMap((e) => e.driverIds)
+      : Object.entries(previous.driverTeams)
+          .filter(([, t]) => t && t !== PLAYER_TEAM_ID)
+          .map(([id]) => id),
+  );
   const freeAgents = draft.db.drivers
     .filter((d) => !assigned.has(d.id))
     .sort((a, b) => overallRating(b) - overallRating(a));
@@ -822,11 +856,9 @@ function PhaseThree({
       <div className="grid gap-3 sm:grid-cols-3">
         <BigButton
           active={tab === "sponsor"}
-          disabled={!isFirstSeason}
           onClick={() => setTab("sponsor")}
           title="Major sponsor"
           value={sponsor?.name ?? "Not selected"}
-          locked={!isFirstSeason}
         />
         <BigButton
           active={tab === "pu"}
@@ -836,11 +868,9 @@ function PhaseThree({
         />
         <BigButton
           active={tab === "mate"}
-          disabled={!isFirstSeason}
           onClick={() => setTab("mate")}
           title="Team mate"
           value={teamMate ? driverName(teamMate) : "Not selected"}
-          locked={!isFirstSeason}
         />
       </div>
 
@@ -925,7 +955,7 @@ function PhaseThree({
         <div className="panel p-4">
           <h3 className="headline text-xl">Team mate</h3>
           <p className="text-xs text-muted-foreground">
-            Every free agent, sorted by overall rating. You drive as number one.
+            Every free agent (and your current team mate), sorted by overall rating. You drive as number one.
           </p>
           <div className="mt-4 space-y-1.5">
             {freeAgents.map((d) => (

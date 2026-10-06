@@ -30,13 +30,26 @@ export function CalendarDebugPanel({
 
   const resultFor = (round: number) => season.results.find((r) => r.round === round);
   // everyone currently in a team + the player
-  const grid = [
+  // teams alphabetically (drivers in a team by surname), then every free agent by surname
+  const surname = (id: string) => {
+    const d = data.db.drivers.find((x) => x.id === id);
+    return d ? `${d.lastName} ${d.firstName}`.toLowerCase() : seasonDriverInfo(data, season, id).name.toLowerCase();
+  };
+  const teamed = [
     PLAYER_DRIVER_ID,
     ...Object.entries(season.driverTeams)
       .filter(([id, t]) => t && id !== PLAYER_DRIVER_ID)
       .map(([id]) => id),
-    ...data.db.drivers.filter((d) => !season.driverTeams[d.id]).map((d) => d.id),
-  ];
+  ].sort((a, b) => {
+    const ta = teamLabel(data, driverTeamOf(season, a)).toLowerCase();
+    const tb = teamLabel(data, driverTeamOf(season, b)).toLowerCase();
+    return ta.localeCompare(tb) || surname(a).localeCompare(surname(b));
+  });
+  const free = data.db.drivers
+    .filter((d) => !season.driverTeams[d.id])
+    .map((d) => d.id)
+    .sort((a, b) => surname(a).localeCompare(surname(b)));
+  const grid = [...teamed, ...free];
   const label = (id: string) => {
     const info = seasonDriverInfo(data, season, id);
     const team = driverTeamOf(season, id);
