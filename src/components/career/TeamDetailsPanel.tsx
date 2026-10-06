@@ -15,7 +15,9 @@ export function TeamDetailsPanel({
   const [team, setTeam] = useState(data.team);
   useEffect(() => setTeam(data.team), [data.team]);
   const dirty =
-    team.name !== data.team.name || team.colour !== data.team.colour || team.description !== data.team.description;
+    team.name !== data.team.name ||
+    team.colour !== data.team.colour ||
+    (team.secondaryColour ?? "") !== (data.team.secondaryColour ?? "") || team.description !== data.team.description;
 
   return (
     <div className="panel space-y-4 p-5">
@@ -37,6 +39,23 @@ export function TeamDetailsPanel({
         </div>
       </label>
       <label className="block space-y-1">
+        <span className="label-caps">Secondary colour (dashboard text)</span>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={team.secondaryColour || "#ffffff"}
+            onChange={(e) => setTeam({ ...team, secondaryColour: e.target.value })}
+            className="h-9 w-14 cursor-pointer rounded border border-border bg-transparent"
+          />
+          <Input
+            className="w-32 font-mono"
+            value={team.secondaryColour ?? ""}
+            placeholder="#ffffff"
+            onChange={(e) => setTeam({ ...team, secondaryColour: e.target.value })}
+          />
+        </div>
+      </label>
+      <label className="block space-y-1">
         <span className="label-caps">Backstory</span>
         <Textarea rows={6} value={team.description} onChange={(e) => setTeam({ ...team, description: e.target.value })} />
       </label>
@@ -47,6 +66,7 @@ export function TeamDetailsPanel({
             update((d) => {
               d.team.name = team.name.trim();
               d.team.colour = team.colour;
+              d.team.secondaryColour = team.secondaryColour;
               d.team.description = team.description;
             });
             toast.success("Team details saved.");

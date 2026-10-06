@@ -126,6 +126,7 @@ function DashboardPage() {
         className="flex flex-wrap items-center justify-between gap-4 rounded-lg px-6 py-5"
         style={{
           background: `linear-gradient(90deg, ${data.team.colour || "#e10600"} 0%, transparent 85%)`,
+          color: data.team.secondaryColour || undefined,
         }}
       >
         <div>
