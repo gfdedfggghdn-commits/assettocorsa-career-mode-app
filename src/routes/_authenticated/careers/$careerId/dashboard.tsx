@@ -89,12 +89,20 @@ function DashboardPage() {
       const outcome = processResultFile(data, state, raw, file.name);
       await save.mutateAsync({ data: outcome.data, state: outcome.state });
       toast.success(outcome.message);
-      if (outcome.state === "SEASON_COMPLETE") navigate({ to: "/careers/$careerId/complete", params: { careerId } });
       if (outcome.state === "MID_SEASON_CONTRACT_WINDOW") setTab("market");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not read this file.");
     }
   };
+
+  if (state === "SEASON_COMPLETE") {
+    void navigate({ to: "/careers/$careerId/complete", params: { careerId } });
+    return null;
+  }
+  if (state === "PRESEASON") {
+    void navigate({ to: "/careers/$careerId/preseason", params: { careerId } });
+    return null;
+  }
 
   const blocked = blockedReason(state, data);
   const seasonDone = !!season && season.calendar.length > 0 && season.results.length >= season.calendar.length;
@@ -125,7 +133,9 @@ function DashboardPage() {
             Season {career.season} · Round {Math.min(done + 1, Math.max(rounds, 1))} of {rounds} ·
             Competitiveness {competitiveness(data)}
           </p>
-          <h1 className="headline text-4xl">{data.team.name || career.name}</h1>
+          <h1 className="headline text-4xl" style={{ color: data.team.secondaryColour || undefined }}>
+            {data.team.name || career.name}
+          </h1>
         </div>
         <div className="text-right">
           <p className="label-caps">Budget</p>
@@ -192,14 +202,14 @@ function DashboardPage() {
             )}
             {readyForSummary && (
               <Button
-                variant="secondary"
+                variant="default"
                 className="w-full"
                 onClick={async () => {
                   await save.mutateAsync({ state: "SEASON_COMPLETE" });
                   navigate({ to: "/careers/$careerId/complete", params: { careerId } });
                 }}
               >
-                Season summary
+                Advance to post-season screen
               </Button>
             )}
           </div>

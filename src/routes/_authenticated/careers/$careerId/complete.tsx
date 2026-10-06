@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useCareer, useSaveCareer } from "@/lib/career/api";
 import {
+  captureSnapshot,
   constructorPosition,
   currentSeason,
   driverPositionOf,
@@ -56,16 +57,17 @@ function CompletePage() {
   const prize = prizeMoneyFor(data, myPos);
   const newBalance = data.cash + reward + prize;
 
-  const alreadyPaid = career.state !== "SEASON_COMPLETE";
+  const alreadyPaid = career.state === "PRESEASON";
 
   const finish = async () => {
     if (alreadyPaid) {
-      navigate({ to: "/careers/$careerId/dashboard", params: { careerId } });
+      navigate({ to: "/careers/$careerId/preseason", params: { careerId } });
       return;
     }
     const next: CareerData = structuredClone(data);
     const sea = next.seasons[next.seasons.length - 1];
     if (sea) {
+      captureSnapshot(next, sea);
       sea.completed = true;
       sea.majorObjectiveMet = sponsor ? objectiveMet : null;
     }
@@ -79,8 +81,12 @@ function CompletePage() {
         if (raced >= needed) d.f1Years = (d.f1Years || 0) + 1;
       }
     }
-    await save.mutateAsync({ data: next, state: "END_OF_SEASON_SPONSOR_WINDOW" });
-    navigate({ to: "/careers/$careerId/dashboard", params: { careerId } });
+    // next season's major sponsor and team mate are chosen fresh in pre-season
+    next.pendingMajorSponsorId = null;
+    next.pendingTeamMateId = null;
+    next.preseasonPhase = 1;
+    await save.mutateAsync({ data: next, state: "PRESEASON", season: career.season + 1 });
+    navigate({ to: "/careers/$careerId/preseason", params: { careerId } });
   };
 
   const pos = (p: number | null) => (p ? `P${p}` : "Unclassified");
@@ -122,7 +128,7 @@ function CompletePage() {
       <StandingsPanel data={data} />
 
       <Button onClick={finish} disabled={save.isPending}>
-        {alreadyPaid ? "Back to the dashboard" : "Collect payouts — choose next season's sponsor"}
+        {alreadyPaid ? "Go to pre-season" : "Collect payouts — go to pre-season"}
       </Button>
     </main>
   );
