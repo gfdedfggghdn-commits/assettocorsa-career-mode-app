@@ -96,6 +96,14 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
                     if (!sea) return;
                     if (sea.teamMateId === id && t.id !== PLAYER_TEAM_ID) sea.teamMateId = null;
                     if (t.id === PLAYER_TEAM_ID) sea.teamMateId = id;
+                    const prevTeam = sea.driverTeams[id] ?? "";
+                    for (const r of sea.results) {
+                      if (r.positions[id] == null) continue;
+                      r.teams ??= {};
+                      // races run as a free agent go to the new team; races already run for a team stay with that team
+                      if (!(id in r.teams)) r.teams[id] = prevTeam;
+                      if (!r.teams[id]) r.teams[id] = t.id;
+                    }
                     if (t.id) sea.driverTeams[id] = t.id;
                     else delete sea.driverTeams[id];
                   });
