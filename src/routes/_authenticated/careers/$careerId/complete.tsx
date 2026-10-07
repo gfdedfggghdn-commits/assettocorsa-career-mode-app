@@ -6,8 +6,10 @@ import {
   constructorPosition,
   currentSeason,
   driverPositionOf,
+  majorObjectiveText,
   money,
   prizeMoneyFor,
+  teamPointFinishes,
 } from "@/lib/career/engine";
 import { PLAYER_DRIVER_ID, type CareerData } from "@/lib/career/types";
 import { Button } from "@/components/ui/button";
@@ -37,7 +39,9 @@ function CompletePage() {
   const { data: career, isLoading } = useCareer(careerId);
   const save = useSaveCareer(careerId);
   const navigate = useNavigate();
-  const [objectiveMet, setObjectiveMet] = useState(false);
+  const [manualMet, setManualMet] = useState(false);
+  const [regPU, setRegPU] = useState(false);
+  const [regChassis, setRegChassis] = useState(false);
 
   if (isLoading || !career) {
     return <div className="p-10 text-sm text-muted-foreground">Loading season…</div>;
@@ -53,6 +57,9 @@ function CompletePage() {
   const matePos = driverPositionOf(data, season, season.teamMateId ?? null);
   const myPos = constructorPosition(data, season);
   const sponsor = data.db.majorSponsors.find((s) => s.id === season.majorSponsorId);
+  const auto = sponsor?.objectiveType === "POINT_FINISHES";
+  const pointFinishes = teamPointFinishes(season);
+  const objectiveMet = auto ? pointFinishes >= (sponsor?.objectiveCount ?? 0) : manualMet;
   const reward = objectiveMet ? (sponsor?.objectiveReward ?? 0) : 0;
   const prize = prizeMoneyFor(data, myPos);
   const newBalance = data.cash + reward + prize;
@@ -72,6 +79,9 @@ function CompletePage() {
       sea.majorObjectiveMet = sponsor ? objectiveMet : null;
     }
     next.cash = newBalance;
+    // regulation changes wipe that department's upgrades for everyone
+    if (regPU) next.development.powerUnit = 0;
+    if (regChassis) next.development.chassis = 0;
     next.lastRaceEarnings = null;
     // +1 F1 year for every driver who raced at least 25% of the season's rounds
     if (sea) {
@@ -106,11 +116,18 @@ function CompletePage() {
         {sponsor ? (
           <>
             <p className="headline text-2xl">{sponsor.name}</p>
-            <p className="text-sm text-muted-foreground">{sponsor.seasonObjective || "No objective"}</p>
-            <label className="flex items-center gap-3 text-sm">
-              <Switch disabled={alreadyPaid} checked={objectiveMet} onCheckedChange={setObjectiveMet} aria-label="Objective achieved" />
-              Goal achieved
-            </label>
+            <p className="text-sm text-muted-foreground">{majorObjectiveText(sponsor)}</p>
+            {auto ? (
+              <p className="text-sm">
+                Your team scored {pointFinishes} point finish{pointFinishes === 1 ? "" : "es"}.
+                {!objectiveMet && " Goal not reached."}
+              </p>
+            ) : (
+              <label className="flex items-center gap-3 text-sm">
+                <Switch disabled={alreadyPaid} checked={manualMet} onCheckedChange={setManualMet} aria-label="Objective achieved" />
+                Goal achieved
+              </label>
+            )}
             {objectiveMet && (
               <div className="flex items-center gap-3 text-success">
                 <CheckCircle2 className="size-12" />
@@ -121,6 +138,21 @@ function CompletePage() {
         ) : (
           <p className="text-sm text-muted-foreground">No major sponsor this season.</p>
         )}
+      </div>
+
+      <div className="panel space-y-3 p-6">
+        <h2 className="headline text-2xl">Regulation changes</h2>
+        <p className="text-xs text-muted-foreground">
+          Turning a department on resets every upgrade in it for the whole grid next season.
+        </p>
+        <label className="flex items-center justify-between text-sm">
+          Power unit
+          <Switch disabled={alreadyPaid} checked={regPU} onCheckedChange={setRegPU} aria-label="Power unit regulation change" />
+        </label>
+        <label className="flex items-center justify-between text-sm">
+          Chassis
+          <Switch disabled={alreadyPaid} checked={regChassis} onCheckedChange={setRegChassis} aria-label="Chassis regulation change" />
+        </label>
       </div>
 
       <Row label="New balance" value={money(newBalance)} />

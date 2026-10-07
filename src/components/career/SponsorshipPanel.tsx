@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { competitiveness, currentSeason, isMajorSponsorUnlocked, money } from "@/lib/career/engine";
+import { competitiveness, currentSeason, isMajorSponsorUnlocked, majorObjectiveText, money } from "@/lib/career/engine";
+import { MINOR_SLOT_COSTS } from "@/lib/career/types";
+import { Lock } from "lucide-react";
 import type { CareerData, CareerState, MajorSponsor, MinorSponsor } from "@/lib/career/types";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -34,6 +36,20 @@ export function SponsorshipPanel({
       d.pendingMajorSponsorId = s.id;
     }, "END_OF_SEASON_CONTRACT_WINDOW");
     toast.success(`${s.name} signed for next season. Now renew your driver line-up.`);
+  };
+
+  const slots = data.minorSlots ?? 7;
+  const buySlot = (i: number) => {
+    const cost = MINOR_SLOT_COSTS[i] ?? 0;
+    if (cost > data.cash) {
+      toast.error("Not enough money for this sponsor slot.");
+      return;
+    }
+    update((d) => {
+      d.minorSlots = i + 1;
+      d.cash -= cost;
+    });
+    toast.success(`Sponsor slot ${i + 1} bought for ${money(cost)}.`);
   };
 
   const pickMinor = (s: MinorSponsor) => {
@@ -75,7 +91,7 @@ export function SponsorshipPanel({
                   <div>Signing bonus {money(s.signingBonus)}</div>
                   <div>Per race {money(s.weeklyIncome)}</div>
                   <div>
-                    Objective: {s.seasonObjective || "—"} ({money(s.objectiveReward)})
+                    Objective: {majorObjectiveText(s)} ({money(s.objectiveReward)})
                   </div>
                 </dl>
               </button>
@@ -92,7 +108,7 @@ export function SponsorshipPanel({
             <p className="text-sm text-muted-foreground">{major.description}</p>
             <dl className="mt-3 grid gap-2 font-mono text-xs text-muted-foreground sm:grid-cols-3">
               <div>Per race {money(major.weeklyIncome)}</div>
-              <div>Objective {major.seasonObjective || "—"}</div>
+              <div>Objective {majorObjectiveText(major)}</div>
               <div>Reward {money(major.objectiveReward)}</div>
             </dl>
             <p className="mt-3 text-xs text-muted-foreground">
@@ -112,6 +128,22 @@ export function SponsorshipPanel({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 7 }, (_, i) => {
             const id = season?.minorSponsorIds[i] ?? null;
+            if (i >= slots) {
+              const cost = MINOR_SLOT_COSTS[i] ?? 0;
+              const next = i === slots;
+              return (
+                <button
+                  key={i}
+                  disabled={!next}
+                  onClick={() => buySlot(i)}
+                  className="panel flex min-h-[7rem] flex-col items-center justify-center gap-1 text-muted-foreground transition-colors enabled:hover:border-primary enabled:hover:text-foreground disabled:opacity-40"
+                >
+                  <Lock className="size-5" />
+                  <span className="label-caps">Buy slot {i + 1}</span>
+                  <span className="font-mono text-sm">{money(cost)}</span>
+                </button>
+              );
+            }
             const s = data.db.minorSponsors.find((m) => m.id === id);
             return s ? (
               <div key={i} className="panel p-4">
@@ -208,8 +240,10 @@ function goalText(data: CareerData, s: MinorSponsor): string {
       return `Finish ${ordinal(s.objectivePosition ?? 20)} or better`;
     case "AHEAD_OF_TEAM": {
       const t = data.db.teams.find((x) => x.id === s.objectiveTeamId);
-      return `Finish ahead of ${t?.name || "rival team"}`;
+      return `Finish ahead of both ${t?.name || "rival team"} drivers`;
     }
+    case "TEAM_POINTS":
+      return `Achieve ${s.objectivePoints ?? 1} points as a team`;
     case "AHEAD_OF_TEAMMATE":
       return "Finish ahead of your team mate";
     default:
