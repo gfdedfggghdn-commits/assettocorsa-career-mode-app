@@ -381,7 +381,18 @@ function PhaseOne({
           { key: "name", label: "Name", width: "12rem" },
           { key: "description", label: "Description", width: "16rem" },
           { key: "signingBonus", label: "Signing bonus", type: "number" },
-          { key: "seasonObjective", label: "Season objective", width: "14rem" },
+          {
+            key: "objectiveType",
+            label: "Objective type",
+            type: "select",
+            width: "14rem",
+            options: [
+              { value: "MANUAL", label: "Written objective (tick by hand)" },
+              { value: "POINT_FINISHES", label: "As a team, achieve X point finishes" },
+            ],
+          },
+          { key: "objectiveCount", label: "X (point finishes)", type: "number", width: "7rem" },
+          { key: "seasonObjective", label: "Written objective", width: "14rem" },
           { key: "objectiveReward", label: "Objective reward", type: "number" },
           { key: "weeklyIncome", label: "Weekly income", type: "number" },
           { key: "minCompetitiveness", label: "Min comp.", type: "number", width: "6rem" },
@@ -424,10 +435,12 @@ function PhaseOne({
               { value: "FINISH_POSITION", label: "Finish Nth or better" },
               { value: "AHEAD_OF_TEAMMATE", label: "Finish ahead of team mate" },
               { value: "AHEAD_OF_TEAM", label: "Finish ahead of a team" },
+              { value: "TEAM_POINTS", label: "Achieve X points as a team" },
               { value: "MANUAL", label: "Always pay (manual)" },
             ],
           },
           { key: "objectivePosition", label: "Position", type: "number", width: "6rem" },
+          { key: "objectivePoints", label: "Team points (X)", type: "number", width: "7rem" },
           {
             key: "objectiveTeamId",
             label: "Rival team",
@@ -490,10 +503,11 @@ function PhaseOne({
         fields={[
           { key: "label", label: "Label" },
           { key: "startingCash", label: "Starting cash", type: "number" },
-          { key: "startingCompetitiveness", label: "Starting competitiveness", type: "number" },
+          { key: "startingUpgrades", label: "Upgrades base (0-20)", type: "number" },
+          { key: "minorSlots", label: "Minor sponsor slots (0-7)", type: "number" },
         ]}
         rows={draft.db.startingTiers}
-        makeEmpty={() => ({ id: uid(), label: "", startingCash: 0, startingCompetitiveness: 0 })}
+        makeEmpty={() => ({ id: uid(), label: "", startingCash: 0, startingUpgrades: 0, minorSlots: 2 })}
         onChange={(rows) => patch((d) => void (d.db.startingTiers = rows))}
         extra={
           <SetBar
