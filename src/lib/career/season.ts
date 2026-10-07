@@ -151,6 +151,9 @@ export function applyRaceResult(
     message = `Round ${target.round} saved. The mid-season contract window is now open.`;
   }
 
+  const newcomers = Object.keys(positions).filter((id) => id !== PLAYER_DRIVER_ID && !season.driverTeams[id]);
+  if (newcomers.length)
+    message += ` ${newcomers.length} free agent${newcomers.length > 1 ? "s" : ""} raced — give them a team in the standings tab and their points go to that team.`;
   if (outcomes.length) message += ` ${metCount}/${outcomes.length} sponsor goals met.`;
 
   return { data: next, state: nextState, message, round: target.round };

@@ -20,6 +20,10 @@ export type MajorSponsor = {
   weeklyIncome: number;
   minCompetitiveness: number;
   operationsUnlock: number;
+  /** POINT_FINISHES is checked automatically at the end of the season */
+  objectiveType?: MajorObjectiveType;
+  /** number of top-10 finishes the team needs (POINT_FINISHES) */
+  objectiveCount?: number;
 };
 
 export type MinorObjectiveType =
@@ -27,7 +31,10 @@ export type MinorObjectiveType =
   | "AHEAD_OF_TEAM"
   | "AHEAD_OF_TEAMMATE"
   | "BEAT_POSITION_GAINS"
+  | "TEAM_POINTS"
   | "MANUAL";
+
+export type MajorObjectiveType = "MANUAL" | "POINT_FINISHES";
 
 export type MinorSponsor = {
   id: string;
@@ -40,6 +47,8 @@ export type MinorSponsor = {
   objectivePosition?: number;
   /** team whose drivers you must beat (AHEAD_OF_TEAM) */
   objectiveTeamId?: string;
+  /** points the team must score in one race (TEAM_POINTS) */
+  objectivePoints?: number;
   /** paid every race while contracted */
   raceReward: number;
   /** extra paid for every race where the goal is met */
@@ -101,7 +110,12 @@ export type StartingTier = {
   id: string;
   label: string;
   startingCash: number;
-  startingCompetitiveness: number;
+  /** legacy, no longer edited */
+  startingCompetitiveness?: number;
+  /** upgrades the team starts with in every department (0-20) */
+  startingUpgrades?: number;
+  /** minor sponsor slots the team starts with (0-7) */
+  minorSlots?: number;
 };
 
 export type PrizeMoneyRow = { position: number; amount: number };
@@ -189,6 +203,8 @@ export type CareerData = {
   pendingTeamMateId: string | null;
   /** money made from the most recent race upload; null between seasons */
   lastRaceEarnings: number | null;
+  /** unlocked minor sponsor slots; undefined on older careers = all 7 */
+  minorSlots?: number;
 };
 
 export type Career = {
@@ -201,6 +217,8 @@ export type Career = {
 
 export const MAX_UPGRADES = 20;
 export const BASE_UPGRADE_COST = 250000;
+/** price of minor sponsor slot 1..7 */
+export const MINOR_SLOT_COSTS = [200000, 500000, 750000, 1000000, 2000000, 5000000, 10000000];
 export const POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 
 /** Contract cost defaults: rating 80 -> $6m, rating 90 -> $10.5m. */
@@ -217,9 +235,9 @@ export const emptyDatabases = (): CareerDatabases => ({
   playerNames: [],
   season1: [],
   startingTiers: [
-    { id: "small", label: "Small", startingCash: 5000000, startingCompetitiveness: 20 },
-    { id: "medium", label: "Medium", startingCash: 12000000, startingCompetitiveness: 40 },
-    { id: "big", label: "Big", startingCash: 25000000, startingCompetitiveness: 60 },
+    { id: "small", label: "Small", startingCash: 5000000, startingUpgrades: 0, minorSlots: 2 },
+    { id: "medium", label: "Medium", startingCash: 12000000, startingUpgrades: 2, minorSlots: 3 },
+    { id: "big", label: "Big", startingCash: 25000000, startingUpgrades: 4, minorSlots: 4 },
   ],
   prizeMoney: [],
   contractCostBase: DEFAULT_CONTRACT_BASE,

@@ -60,17 +60,8 @@ function AuthPage() {
   }
 
   async function google() {
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-    if (isMobile) {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth` },
-      });
-      if (error) toast.error("Google sign-in failed");
-      return;
-    }
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/auth`,
+      redirect_uri: window.location.origin,
     });
     if (result.error) {
       toast.error("Google sign-in failed");

@@ -56,11 +56,11 @@ export const developmentPercentage = (dev: Development) =>
 export const upgradeCost = (level: number, dev: Development, section: keyof Development) => {
   const base = BASE_UPGRADE_COST * Math.pow(1.15, level);
   if (section === "infrastructure") return Math.round(base);
-  const discount = Math.min(0.75, dev.infrastructure * 0.05);
+  const discount = Math.min(0.25, dev.infrastructure * 0.0125);
   return Math.round(base * (1 - discount));
 };
 
-export const acRestrictor = (dev: Development) => Math.max(0, 60 - dev.powerUnit * 5);
+export const acRestrictor = (dev: Development) => Math.max(0, 60 - dev.powerUnit * 3);
 export const acBallast = (dev: Development) => Math.max(0, 40 - dev.chassis * 2);
 
 /* ---------------- history-safe lookups ---------------- */
@@ -180,7 +180,8 @@ export function competitiveness(data: CareerData): number {
   const perf = performanceScore(season);
   if (perf === null) {
     const tier = data.db.startingTiers.find((t) => t.id === data.team.startingTierId);
-    const base = tier?.startingCompetitiveness ?? 0;
+    const base = tier?.startingCompetitiveness;
+    if (base == null) return Math.max(0, Math.min(100, Math.round(devPct)));
     return Math.max(0, Math.min(100, Math.round(devPct * 0.6 + base * 0.4)));
   }
   return Math.max(0, Math.min(100, Math.round(devPct * 0.6 + perf * 0.4)));
@@ -239,7 +240,9 @@ export function driverTeamOf(season: SeasonRecord, id: string): string | undefin
 /** Team a driver scored for in one particular race (falls back to the season line-up). */
 export function resultTeamOf(season: SeasonRecord, race: RaceResult, id: string): string | undefined {
   if (id === PLAYER_DRIVER_ID) return PLAYER_TEAM_ID;
-  return race.teams?.[id] ?? season.driverTeams[id];
+  // an empty entry means the driver was a free agent when the race ran and has not been placed yet
+  if (race.teams && id in race.teams) return race.teams[id] || undefined;
+  return season.driverTeams[id];
 }
 
 export function driverStandings(data: CareerData, season: SeasonRecord): StandingRow[] {
@@ -388,7 +391,13 @@ export function evaluateMinorSponsors(
         .filter(([, t]) => t === s.objectiveTeamId)
         .map(([d]) => positions[d])
         .filter((v): v is number => v != null);
-      met = myBest != null && rivals.length > 0 && rivals.some((r) => myBest < r);
+      // the player must beat every driver of that team (the team mate plays no role)
+      met = myBest != null && rivals.length > 0 && rivals.every((r) => myBest < r);
+    } else if (type === "TEAM_POINTS") {
+      const pts = Object.entries(positions)
+        .filter(([d]) => driverTeamOf(season, d) === PLAYER_TEAM_ID)
+        .reduce((sum, [, p]) => sum + pointsFor(p), 0);
+      met = pts >= (s.objectivePoints ?? 1);
     }
     out.push({
       id: s.id,
@@ -415,3 +424,17 @@ export function raceIncome(
 
 export const uid = () =>
   globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now();
+
+/** Top-10 finishes scored by the player's team over a season. */
+export function teamPointFinishes(season: SeasonRecord): number {
+  let n = 0;
+  for (const r of season.results)
+    for (const [id, pos] of Object.entries(r.positions))
+      if (pos <= 10 && resultTeamOf(season, r, id) === PLAYER_TEAM_ID) n++;
+  return n;
+}
+
+export function majorObjectiveText(s: { seasonObjective?: string; objectiveType?: string; objectiveCount?: number }) {
+  if (s.objectiveType === "POINT_FINISHES") return `As a team, achieve ${s.objectiveCount ?? 0} point finishes during the season`;
+  return s.seasonObjective || "No objective";
+}

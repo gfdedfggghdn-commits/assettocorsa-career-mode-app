@@ -38,7 +38,7 @@ const SECTIONS: {
     key: "infrastructure",
     group: "Corporate",
     title: "Infrastructure",
-    blurb: (d) => `Cuts every other upgrade cost by ${Math.min(75, d.infrastructure * 5)}%.`,
+    blurb: (d) => `Cuts every other upgrade cost by ${Math.min(25, d.infrastructure * 1.25)}%.`,
   },
 ];
 
@@ -69,7 +69,7 @@ export function DevelopmentPanel({
     const level = dev[key];
     if (level <= 0) return;
     const after = { ...dev, [key]: level - 1 };
-    const refund = Math.round(upgradeCost(level - 1, after, key) * 0.75);
+    const refund = Math.round(upgradeCost(level - 1, after, key) * 0.5);
     update((d) => {
       d.development[key] -= 1;
       d.cash += refund;
@@ -122,7 +122,7 @@ export function DevelopmentPanel({
                   {level > 0 && (
                     <Button className="mt-2 w-full" variant="ghost" size="sm" onClick={() => sell(s.key)}>
                       Sell one upgrade — get back{" "}
-                      {money(upgradeCost(level - 1, { ...dev, [s.key]: level - 1 }, s.key) * 0.75)}
+                      {money(upgradeCost(level - 1, { ...dev, [s.key]: level - 1 }, s.key) * 0.5)}
                     </Button>
                   )}
                 </div>
