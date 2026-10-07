@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useCareer, useSaveCareer } from "@/lib/career/api";
+import { Flag } from "@/lib/career/flags";
 import {
   PLAYER_TEAM_ID,
   type CareerData,
@@ -24,6 +25,7 @@ import {
   driverCost,
   driverName,
   isMajorSponsorUnlocked,
+  majorObjectiveText,
   money,
   overallRating,
   uid,
@@ -227,6 +229,9 @@ function startSeason(
     }
     const tier = next.db.startingTiers.find((t) => t.id === next.team.startingTierId);
     next.cash = tier?.startingCash ?? 0;
+    const ups = Math.max(0, Math.min(20, Math.round(tier?.startingUpgrades ?? 0)));
+    next.development = { powerUnit: ups, chassis: ups, operations: ups, infrastructure: ups };
+    next.minorSlots = Math.max(0, Math.min(7, Math.round(tier?.minorSlots ?? 7)));
   } else if (previous) {
     Object.assign(driverTeams, previous.driverTeams);
   }
@@ -796,7 +801,8 @@ function PhaseTwo({
                 <div className="headline text-lg">{tier.label}</div>
                 <div className="text-sm text-muted-foreground">{money(tier.startingCash)}</div>
                 <div className="text-xs text-muted-foreground">
-                  Competitiveness {tier.startingCompetitiveness}
+                  {Math.max(0, Math.min(20, tier.startingUpgrades ?? 0))} upgrades per department ·{" "}
+                  {tier.minorSlots ?? 7} minor sponsor slots
                 </div>
               </button>
             ))}
@@ -808,6 +814,17 @@ function PhaseTwo({
 }
 
 /* ------------------------------ phase 3 ------------------------------ */
+
+type MateSort = "rating" | "cost" | "team" | "racecraft" | "pace" | "aggressiveness" | "f1Years";
+const MATE_SORTS: { key: MateSort; label: string }[] = [
+  { key: "rating", label: "Rating" },
+  { key: "cost", label: "Cost" },
+  { key: "team", label: "Team" },
+  { key: "racecraft", label: "Racecraft" },
+  { key: "pace", label: "Pace" },
+  { key: "aggressiveness", label: "Aggression" },
+  { key: "f1Years", label: "F1 years" },
+];
 
 function PhaseThree({
   draft,
@@ -858,9 +875,26 @@ function PhaseThree({
           .filter(([, t]) => t && t !== PLAYER_TEAM_ID)
           .map(([id]) => id),
   );
+  const [mateSort, setMateSort] = useState<MateSort>("rating");
+  const teamName = (id: string) => {
+    const t = previous?.driverTeams[id];
+    if (!t) return "~";
+    return t === PLAYER_TEAM_ID ? draft.team.name || "My Team" : draft.db.teams.find((x) => x.id === t)?.name ?? "~";
+  };
+  // season 1: free agents only; later seasons: the whole market, drivers can be poached from other teams
   const freeAgents = draft.db.drivers
-    .filter((d) => !assigned.has(d.id))
-    .sort((a, b) => overallRating(b) - overallRating(a));
+    .filter((d) => (isFirstSeason || !previous ? !assigned.has(d.id) : true))
+    .sort((a, b) => {
+      switch (mateSort) {
+        case "cost": return driverCost(draft.db, b) - driverCost(draft.db, a);
+        case "team": return teamName(a.id).localeCompare(teamName(b.id)) || overallRating(b) - overallRating(a);
+        case "racecraft": return b.racecraft - a.racecraft;
+        case "pace": return b.pace - a.pace;
+        case "aggressiveness": return b.aggressiveness - a.aggressiveness;
+        case "f1Years": return (b.f1Years || 0) - (a.f1Years || 0);
+        default: return overallRating(b) - overallRating(a);
+      }
+    });
 
   const sponsor = draft.db.majorSponsors.find((s) => s.id === draft.pendingMajorSponsorId);
   const teamMate = draft.db.drivers.find((d) => d.id === draft.pendingTeamMateId);
@@ -915,7 +949,7 @@ function PhaseThree({
                   <dl className="mt-2 space-y-0.5 text-sm">
                     <Row k="Signing bonus" v={money(s.signingBonus)} />
                     <Row k="Weekly income" v={money(s.weeklyIncome)} />
-                    <Row k="Objective" v={s.seasonObjective || "—"} />
+                    <Row k="Objective" v={majorObjectiveText(s)} />
                     <Row k="Objective reward" v={money(s.objectiveReward)} />
                   </dl>
                 </button>
@@ -969,28 +1003,51 @@ function PhaseThree({
         <div className="panel p-4">
           <h3 className="headline text-xl">Team mate</h3>
           <p className="text-xs text-muted-foreground">
-            Every free agent (and your current team mate), sorted by overall rating. You drive as number one.
+            {isFirstSeason
+              ? "Every free agent, sorted by overall rating. You drive as number one."
+              : "The whole driver market — you can sign drivers away from other teams. You drive as number one."}
           </p>
           <div className="mt-4 space-y-1.5">
-            {freeAgents.map((d) => (
+            {!isFirstSeason && (
+              <div className="mb-2 flex flex-wrap items-center gap-1">
+                <span className="label-caps mr-1">Sort</span>
+                {MATE_SORTS.map((o) => (
+                  <button
+                    key={o.key}
+                    onClick={() => setMateSort(o.key)}
+                    className={`label-caps rounded px-2 py-1 ${mateSort === o.key ? "bg-primary text-primary-foreground" : "bg-surface-2"}`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {freeAgents.map((d) => {
+              const t = isFirstSeason || !previous ? undefined : previous.driverTeams[d.id];
+              const tName = !t ? "Free Agent" : t === PLAYER_TEAM_ID ? draft.team.name || "My Team" : draft.db.teams.find((x) => x.id === t)?.name ?? "Free Agent";
+              const tCol = !t ? "transparent" : t === PLAYER_TEAM_ID ? draft.team.colour : draft.db.teams.find((x) => x.id === t)?.colour ?? "transparent";
+              return (
               <button
                 key={d.id}
                 onClick={() => patch((x) => void (x.pendingTeamMateId = d.id))}
-                className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-md border px-3 py-1.5 text-left text-sm transition-colors ${
                   draft.pendingTeamMateId === d.id
                     ? "border-primary bg-primary/10"
                     : "border-border bg-surface-2 hover:border-muted-foreground"
                 }`}
               >
-                <span className="h-6 w-1.5 rounded bg-white" />
-                <span className="flex-1 font-medium">{driverName(d)}</span>
-                <span className="text-xs text-muted-foreground">Free Agent</span>
-                <span className="font-mono text-sm">{overallRating(d)}</span>
-                <span className="w-28 text-right font-mono text-sm">
-                  {money(driverCost(draft.db, d))}
+                <Flag nationality={d.nationality} />
+                <span className="font-medium">{driverName(d)}</span>
+                <span className="h-4 w-1 rounded-sm" style={{ background: tCol }} />
+                <span className="flex-1 text-xs text-muted-foreground">{tName}</span>
+                <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
+                  {d.racecraft}/{d.pace}/{d.aggressiveness} · {d.f1Years}y
                 </span>
+                <span className="font-mono">{overallRating(d)}</span>
+                <span className="w-28 text-right font-mono">{money(driverCost(draft.db, d))}</span>
               </button>
-            ))}
+              );
+            })}
             {freeAgents.length === 0 && (
               <p className="text-sm text-muted-foreground">No free agents available.</p>
             )}
