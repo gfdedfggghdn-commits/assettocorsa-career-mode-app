@@ -13,6 +13,8 @@ export const Route = createFileRoute("/_authenticated/careers/")({
     meta: [
       { title: "Your careers — MyTeam Career Mode" },
       { name: "description", content: "Pick a career save to continue, or start a brand new team." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { property: "og:title", content: "Your careers — MyTeam Career Mode" },
       {
         property: "og:description",
@@ -39,6 +41,8 @@ function CareersPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  const [mode, setMode] = useState<"myteam" | "driver">("myteam");
+  const [contractSystem, setContractSystem] = useState<"realistic" | "basic">("realistic");
 
   async function signOut() {
     await qc.cancelQueries();
@@ -52,7 +56,7 @@ function CareersPage() {
       toast.error("Give your career a name first.");
       return;
     }
-    const id = await create.mutateAsync(name.trim());
+    const id = await create.mutateAsync({ name: name.trim(), mode, contractSystem });
     navigate({ to: "/careers/$careerId/preseason", params: { careerId: id } });
   }
 
@@ -60,7 +64,7 @@ function CareersPage() {
     <main className="mx-auto max-w-4xl px-5 py-14">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="label-caps">MyTeam</p>
+          <p className="label-caps">MyTeam & Driver Career</p>
           <h1 className="headline text-4xl">Career saves</h1>
         </div>
         <Button variant="ghost" size="sm" onClick={signOut}>
@@ -68,7 +72,14 @@ function CareersPage() {
         </Button>
       </div>
 
-      <div className="panel mt-8 flex flex-col gap-3 p-4 sm:flex-row">
+      <div className="mt-8 space-y-4">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Career mode">
+          {(["myteam", "driver"] as const).map(value => <Button key={value} variant={mode === value ? "default" : "secondary"} aria-pressed={mode === value} onClick={() => setMode(value)}>{value === "myteam" ? "MyTeam" : "Driver Career"}</Button>)}
+        </div>
+        {mode === "driver" && <div className="space-y-2"><p className="label-caps">Contract offer system</p><div className="flex gap-2">
+          {(["realistic", "basic"] as const).map(value => <Button key={value} variant={contractSystem === value ? "default" : "secondary"} aria-pressed={contractSystem === value} onClick={() => setContractSystem(value)}>{value === "realistic" ? "Realistic" : "Basic"}</Button>)}
+        </div></div>}
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Input
           placeholder="New career name (e.g. F1 2013 MyTeam)"
           value={name}
@@ -78,6 +89,7 @@ function CareersPage() {
         <Button onClick={startNew} disabled={create.isPending}>
           <Plus className="mr-2 size-4" /> Start career
         </Button>
+      </div>
       </div>
 
       <div className="mt-6 space-y-3">
@@ -102,7 +114,7 @@ function CareersPage() {
                 {c.name}
               </Link>
               <p className="text-sm text-muted-foreground">
-                {c.data.team.name || "Team not named yet"} · Season {c.season} ·{" "}
+                {c.data.mode === "driver" ? "Driver Career" : c.data.team.name || "MyTeam"} · Season {c.season} ·{" "}
                 {STATE_LABEL[c.state] ?? c.state}
               </p>
             </div>

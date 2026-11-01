@@ -53,16 +53,24 @@ export function useCareer(id: string) {
 export function useCreateCareer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (input: string | { name: string; mode: "myteam" | "driver"; contractSystem: "realistic" | "basic" }) => {
       const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("Sign in to create a career.");
+      const name = typeof input === "string" ? input : input.name;
+      const careerData = emptyCareerData();
+      careerData.mode = typeof input === "string" ? "myteam" : input.mode;
+      if (careerData.mode === "driver") careerData.driverCareer = {
+        contractSystem: typeof input === "string" ? "realistic" : input.contractSystem,
+        reputation: 0, lastReputationChange: null, academyId: null, academyLocked: false, teamId: null, role: 2,
+      };
       const { data, error } = await supabase
         .from("careers")
         .insert({
           name,
-          user_id: auth.user!.id,
+          user_id: auth.user.id,
           state: "PRESEASON",
           season: 1,
-          data: emptyCareerData() as never,
+          data: careerData as never,
         })
         .select("id")
         .single();

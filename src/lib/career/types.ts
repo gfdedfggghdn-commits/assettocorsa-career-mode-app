@@ -10,6 +10,22 @@ export const PLAYER_TEAM_ID = "PLAYER";
 /** Pseudo driver representing the player themselves in results and standings. */
 export const PLAYER_DRIVER_ID = "PLAYER_DRIVER";
 
+export type CareerMode = "myteam" | "driver";
+export type ContractSystem = "realistic" | "basic";
+export type DriverRole = 1 | 2;
+export type Academy = { id: string; name: string; colour: string; reputationDiscount: number };
+export type ReputationRules = { beatTeamMate: number; loseToTeamMate: number; beatObjective: number; missObjective: number };
+export type ContractOffer = {
+  id: string; teamId: string; role: DriverRole; replaceDriverId?: string;
+  roundReceived: number; status: "pending" | "accepted" | "declined";
+  source: "chance" | "teammate" | "rival" | "debug";
+};
+export type DriverCareer = {
+  contractSystem: ContractSystem; reputation: number; lastReputationChange: number | null;
+  academyId: string | null; academyLocked: boolean;
+  teamId: string | null; role: DriverRole;
+};
+
 export type MajorSponsor = {
   id: string;
   name: string;
@@ -79,6 +95,10 @@ export type Team = {
   colour: string;
   /** inactive teams stay in the database but are skipped when picking teams */
   active?: boolean;
+  startingReputation?: number;
+  objectivePosition?: number;
+  contractRequirement?: number;
+  academyId?: string;
 };
 
 export type PowerUnit = {
@@ -136,6 +156,9 @@ export type CareerDatabases = {
   prizeMoney: PrizeMoneyRow[];
   /** cost of a driver rated 80; every 10 rating points multiplies it by 1.75 */
   contractCostBase: number;
+  academies?: Academy[];
+  contractChance?: number;
+  reputationRules?: ReputationRules;
 };
 
 export type Development = {
@@ -182,9 +205,24 @@ export type SeasonRecord = {
   completed: boolean;
   majorObjectiveMet: boolean | null;
   snapshot?: SeasonSnapshot;
+  playerTeamId?: string;
+  playerRole?: DriverRole;
+  objectivePosition?: number;
+  rivalId?: string | null;
+  rivalStartRound?: number;
+  teamMateStartRound?: number;
+  rivalSelectionRequired?: boolean;
+  offers?: ContractOffer[];
+  teamRolls?: Record<string, boolean>;
+  offerRounds?: Record<string, number>;
+  driverRoles?: Record<string, DriverRole>;
+  reputationFinalized?: boolean;
+  h2hOffersFinalized?: boolean;
 };
 
 export type CareerData = {
+  mode?: CareerMode;
+  driverCareer?: DriverCareer;
   db: CareerDatabases;
   team: {
     name: string;
@@ -241,6 +279,9 @@ export const emptyDatabases = (): CareerDatabases => ({
   ],
   prizeMoney: [],
   contractCostBase: DEFAULT_CONTRACT_BASE,
+  academies: [],
+  contractChance: 50,
+  reputationRules: { beatTeamMate: 25, loseToTeamMate: 15, beatObjective: 100, missObjective: 75 },
 });
 
 export const emptyCareerData = (): CareerData => ({
@@ -265,4 +306,5 @@ export type SetKind =
   | "startingTiers"
   | "prizeMoney"
   | "playerNames"
-  | "tracks";
+  | "tracks"
+  | "academies";

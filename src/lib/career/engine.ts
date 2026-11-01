@@ -233,15 +233,15 @@ export function seasonDriverIds(data: CareerData, season: SeasonRecord): string[
 
 /** Team a driver races for this season; the player always drives for their own team. */
 export function driverTeamOf(season: SeasonRecord, id: string): string | undefined {
-  if (id === PLAYER_DRIVER_ID) return PLAYER_TEAM_ID;
+  if (id === PLAYER_DRIVER_ID) return season.playerTeamId ?? PLAYER_TEAM_ID;
   return season.driverTeams[id];
 }
 
 /** Team a driver scored for in one particular race (falls back to the season line-up). */
 export function resultTeamOf(season: SeasonRecord, race: RaceResult, id: string): string | undefined {
-  if (id === PLAYER_DRIVER_ID) return PLAYER_TEAM_ID;
   // an empty entry means the driver was a free agent when the race ran and has not been placed yet
   if (race.teams && id in race.teams) return race.teams[id] || undefined;
+  if (id === PLAYER_DRIVER_ID) return season.playerTeamId ?? PLAYER_TEAM_ID;
   return season.driverTeams[id];
 }
 
@@ -303,7 +303,8 @@ export function constructorStandings(data: CareerData, season: SeasonRecord): St
       ].filter(Boolean),
     ),
   );
-  if (!teamIds.includes(PLAYER_TEAM_ID)) teamIds.unshift(PLAYER_TEAM_ID);
+  const playerTeam = season.playerTeamId ?? PLAYER_TEAM_ID;
+  if (!teamIds.includes(playerTeam)) teamIds.unshift(playerTeam);
 
   const rows: StandingRow[] = teamIds.map((teamId) => {
     const cells: (number | null)[] = Array.from({ length: rounds }, () => null);
@@ -328,7 +329,7 @@ export function constructorStandings(data: CareerData, season: SeasonRecord): St
     return {
       id: teamId,
       label: info.name,
-      nationality: "",
+      nationality: data.db.teams.find(t => t.id === teamId)?.nationality ?? (teamId === PLAYER_TEAM_ID ? playerNationality(data) : ""),
       teamName: info.name,
       colour: info.colour,
       cells,
@@ -341,7 +342,7 @@ export function constructorStandings(data: CareerData, season: SeasonRecord): St
 
 export function constructorPosition(data: CareerData, season: SeasonRecord): number {
   const rows = constructorStandings(data, season);
-  const idx = rows.findIndex((r) => r.id === PLAYER_TEAM_ID);
+  const idx = rows.findIndex((r) => r.id === (season.playerTeamId ?? PLAYER_TEAM_ID));
   return idx === -1 ? rows.length : idx + 1;
 }
 

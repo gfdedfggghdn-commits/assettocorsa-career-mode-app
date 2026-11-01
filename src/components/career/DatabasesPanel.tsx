@@ -18,6 +18,8 @@ import type {
 } from "@/lib/career/types";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
+import { DriverSettingsPanel, driverTeamFields } from "./DriverSettingsPanel";
+import { isDriverCareer, isRealistic, clampReputation } from "@/lib/career/driver";
 
 type Props = {
   data: CareerData;
@@ -114,11 +116,12 @@ export function DatabasesPanel({ data, update }: Props) {
           { key: "powerUnitId", label: "Power unit", type: "select", options: puOptions },
           { key: "colour", label: "Colour", type: "color", width: "5rem" },
           { key: "active", label: "Active", type: "switch", width: "5rem" },
+          ...(isDriverCareer(data) ? driverTeamFields(db, isRealistic(data)) : []),
         ]}
         description="Name and colour apply to the current season. Finished seasons keep the name and colour each team had back then, so you can rebrand a team for a new season."
         rows={db.teams.map((t) => ({ ...t, active: t.active ?? true }))}
         makeEmpty={() => ({ id: uid(), name: "", nationality: "", powerUnitId: "", colour: "#888888", active: true })}
-        onChange={(rows) => patch((d) => void (d.teams = rows))}
+        onChange={(rows) => patch((d) => void (d.teams = rows.map(t => ({ ...t, startingReputation: clampReputation(t.startingReputation ?? 0), contractRequirement: clampReputation(t.contractRequirement ?? 0), objectivePosition: Math.max(1, t.objectivePosition ?? 20) }))))}
         extra={<SetBar kind="teams" rows={db.teams} onLoad={(rows) => patch((d) => void (d.teams = rows))} />}
       />
 
@@ -129,7 +132,7 @@ export function DatabasesPanel({ data, update }: Props) {
           { key: "colour", label: "Colour", type: "color", width: "5rem" },
           { key: "basePerformance", label: "Performance", type: "number", width: "7rem" },
           { key: "baseDurability", label: "Durability", type: "number", width: "7rem" },
-          { key: "cost", label: "Cost", type: "number" },
+          ...(!isDriverCareer(data) ? [{ key: "cost" as const, label: "Cost", type: "number" as const }] : []),
           { key: "active", label: "Active", type: "switch", width: "5rem" },
         ]}
         rows={db.powerUnits}
@@ -148,7 +151,7 @@ export function DatabasesPanel({ data, update }: Props) {
         }
       />
 
-      <EntityEditor<MajorSponsor>
+      {!isDriverCareer(data) && <EntityEditor<MajorSponsor>
         title="Major sponsors"
         fields={[
           { key: "name", label: "Name", width: "12rem" },
@@ -193,7 +196,8 @@ export function DatabasesPanel({ data, update }: Props) {
         }
       />
 
-      <EntityEditor<MinorSponsor>
+      }
+      {!isDriverCareer(data) && <EntityEditor<MinorSponsor>
         title="Minor sponsors"
         description="Pick a goal type and the app checks it after every race, paying the reward only when it is met."
         fields={[
@@ -244,6 +248,7 @@ export function DatabasesPanel({ data, update }: Props) {
         }
       />
 
+      }
       <EntityEditor<Track>
         title="Tracks"
         description="Exact ID matches result files precisely; the approximate ID is a fallback."
@@ -278,7 +283,8 @@ export function DatabasesPanel({ data, update }: Props) {
         }
       />
 
-      <ContractCostEditor
+      {isDriverCareer(data) && <DriverSettingsPanel data={data} db={db} patch={patch} />}
+      {!isDriverCareer(data) && <><ContractCostEditor
         value={db.contractCostBase}
         onChange={(n) => patch((d) => void (d.contractCostBase = n))}
       />
@@ -301,6 +307,7 @@ export function DatabasesPanel({ data, update }: Props) {
           )
         }
       />
+      </>}
     </div>
   );
 }
