@@ -6,6 +6,7 @@ import {
   raceIncome,
 } from "./engine";
 import { matchDriver, matchTrack, parseResultFile } from "./resultParser";
+import { advanceDriverRace, isDriverCareer } from "./driver";
 import {
   PLAYER_DRIVER_ID,
   PLAYER_TEAM_ID,
@@ -32,6 +33,8 @@ export function blockedReason(state: CareerState, data: CareerData): string | nu
   if (state === "SEASON_COMPLETE") return "This season is finished. Continue to the post-season screen.";
   if (state === "PRESEASON") return "Finish the pre-season phases first.";
   const season = currentSeason(data);
+  if (isDriverCareer(data) && season?.rivalSelectionRequired && season.results.length < season.calendar.length)
+    return "Choose your rival in Head to head before entering the next race.";
   if (season && season.results.length >= season.calendar.length && season.calendar.length > 0)
     return "Every round of this season has been raced. Advance to the post-season screen.";
   return null;
@@ -43,6 +46,8 @@ export function processResultFile(
   raw: string,
   fileName: string,
 ): UploadOutcome {
+  if (season.results.some(r => r.round === round)) throw new Error("This round already has a result.");
+  if (isDriverCareer(next) && season.rivalSelectionRequired) throw new Error("Choose your rival in Head to head before entering the next race.");
   const blocked = blockedReason(state, data);
   if (blocked) throw new Error(blocked);
 
@@ -119,15 +124,15 @@ export function applyRaceResult(
     sourceKey,
     teams: Object.fromEntries(
       Object.keys(positions)
-        .map((id) => [id, id === PLAYER_DRIVER_ID ? PLAYER_TEAM_ID : (season.driverTeams[id] ?? "")])
-        .filter(([, t]) => t),
+        .map((id) => [id, id === PLAYER_DRIVER_ID ? season.playerTeamId ?? PLAYER_TEAM_ID : (season.driverTeams[id] ?? "")]),
     ),
   };
   season.results.push(result);
   season.results.sort((a, b) => a.round - b.round);
 
-  const outcomes = evaluateMinorSponsors(next, season, positions);
-  const earned = raceIncome(next, season, positions);
+  const outcomes = isDriverCareer(next) ? [] : evaluateMinorSponsors(next, season, positions);
+  const earned = isDriverCareer(next) ? 0 : raceIncome(next, season, positions);
+  if (isDriverCareer(next)) advanceDriverRace(next, season, positions);
   next.cash += earned;
   next.lastRaceEarnings = earned;
   result.earned = earned;
@@ -143,7 +148,7 @@ export function applyRaceResult(
   if (isFinal) {
     message = `Final round saved. Advance to the post-season screen when you're ready.`;
   } else if (
-    season.contractWindowMode === "MID_AND_END" &&
+    !isDriverCareer(next) && season.contractWindowMode === "MID_AND_END" &&
     !season.midSeasonWindowUsed &&
     target.round >= midRound
   ) {
