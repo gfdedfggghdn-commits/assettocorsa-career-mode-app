@@ -306,4 +306,5 @@ export type SetKind =
   | "startingTiers"
   | "prizeMoney"
   | "playerNames"
-  | "tracks";
+  | "tracks"
+  | "academies";
