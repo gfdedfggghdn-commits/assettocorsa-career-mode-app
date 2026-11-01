@@ -2,6 +2,9 @@
 
 This app aims to recreate the MyTeam Career mode feature from Codemasters' F1 games to Assetto Corsa! Just select the correct race result JSON file and the app will automatically calculate scores and incoming sponsor money. 
 
+## How to use
+Copy this link (without quotation marks) into your web browser and it should work fine: "https://ac-career-mode.lovable.app"
+
 ## Homepage
 <img width="1920" height="958" alt="image" src="https://github.com/user-attachments/assets/64c20293-dc7e-4dce-86a8-551b19d96c75" />
 
