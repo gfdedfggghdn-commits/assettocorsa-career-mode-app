@@ -26,4 +26,7 @@ While all of these databases are edited conveniently in the app!
 <img width="1461" height="841" alt="image" src="https://github.com/user-attachments/assets/193a23be-a8e0-4330-93a6-44a730fa97be" />
 
 ## Disclaimer
-The app is vibe coded (with Lovable AI). If you have a problem with that, I get it. But I can't code, and I have asked around for this idea to be coded but I'm broke so I cannot hire anyone. So please, if you have a problem with the fact that it's made with AI I get it, I would probably too, but do not go around and hate on it. At least I'm honest, right?
+I think transparency about AI usage is very important. This app is vibe coded (with Lovable AI). If you have a problem with that, I get it. But I can't code, and I have asked around for this idea to be coded I cannot hire anyone. So please, if you have a problem with the fact that it's made with AI: I get it, I would probably too, but just don't make it a big deal.
+
+## PLANNED FEATURES
+- A full driver career, with you being able to sign for existing teams, race against rivals to be able to receive contract offers from your dream team!
