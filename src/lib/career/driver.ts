@@ -102,11 +102,12 @@ export function startDriverSeason(data: CareerData, number: number, calendar: st
   const teamId = accepted?.teamId ?? selectedTeam;
   const team = data.db.teams.find(t => t.id === teamId && t.active !== false);
   if (!team) throw new Error("Choose an active team.");
-  const mapping: Record<string, string> = previous ? { ...previous.driverTeams } : Object.fromEntries(data.db.season1.flatMap(e => e.driverIds.map(id => [id, e.teamId])));
+  const mapping: Record<string, string> = previous ? { ...previous.driverTeams } : Object.fromEntries(data.db.season1.flatMap(e => e.driverIds.filter(Boolean).map(id => [id, e.teamId])));
   delete mapping[PLAYER_DRIVER_ID];
   const role = accepted?.role ?? driver.role;
   const teammates = Object.keys(mapping).filter(id => mapping[id] === teamId);
-  const replaced = accepted?.replaceDriverId ?? teammates[role - 1];
+  const sameTeam = previous?.playerTeamId === teamId;
+  const replaced = accepted?.replaceDriverId ?? (!sameTeam ? teammates.find(id => (previous?.driverRoles?.[id] ?? (teammates.indexOf(id) + 1)) === role) : undefined);
   if (replaced) delete mapping[replaced];
   mapping[PLAYER_DRIVER_ID] = teamId;
   driver.teamId = teamId; driver.role = role; driver.academyLocked = true; driver.lastReputationChange = null;
