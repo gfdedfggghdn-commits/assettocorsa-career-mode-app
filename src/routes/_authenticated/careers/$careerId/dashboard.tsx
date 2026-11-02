@@ -15,6 +15,11 @@ import { TeamDetailsPanel } from "@/components/career/TeamDetailsPanel";
 import { CalendarDebugPanel } from "@/components/career/CalendarDebugPanel";
 import { ArrowLeft, Database, Flag, LineChart, Upload, Users, Wrench } from "lucide-react";
 import { DatabasesPanel } from "@/components/career/DatabasesPanel";
+import { SeasonOverviewPanel } from "@/components/career/SeasonOverviewPanel";
+import { HeadToHeadPanel } from "@/components/career/HeadToHeadPanel";
+import { ContractOffersPanel } from "@/components/career/ContractOffersPanel";
+import { isDriverCareer, isRealistic } from "@/lib/career/driver";
+import { seasonTeamInfo } from "@/lib/career/engine";
 
 export const Route = createFileRoute("/_authenticated/careers/$careerId/dashboard")({
   head: () => ({
@@ -33,7 +38,7 @@ export const Route = createFileRoute("/_authenticated/careers/$careerId/dashboar
   component: DashboardPage,
 });
 
-type Tab = "development" | "sponsorship" | "standings" | "market" | "team" | "calendar" | "databases";
+type Tab = "development" | "sponsorship" | "standings" | "market" | "team" | "calendar" | "databases" | "h2h";
 
 const TABS: { key: Tab; label: string; icon: typeof Wrench }[] = [
   { key: "development", label: "Development", icon: Wrench },
@@ -60,6 +65,17 @@ function DashboardPage() {
   const data = career.data;
   const state = career.state;
   const season = currentSeason(data);
+  const driverMode = isDriverCareer(data);
+  const realistic = isRealistic(data);
+  const employer = seasonTeamInfo(data, season ?? { ...({} as never) }, season?.playerTeamId);
+  const tabs = driverMode ? [
+    { key: "development" as const, label: "Season overview", icon: Wrench },
+    { key: "standings" as const, label: "Standings", icon: Flag },
+    { key: "h2h" as const, label: "Head to head", icon: Users },
+    ...(realistic ? [{ key: "market" as const, label: "Contract offers", icon: Users }] : []),
+    { key: "calendar" as const, label: "Calendar debug", icon: CalendarCog },
+    { key: "databases" as const, label: "Databases", icon: Database },
+  ] : TABS;
 
   const update = (fn: (d: CareerData) => void) => {
     const next = structuredClone(data);
@@ -90,6 +106,7 @@ function DashboardPage() {
       await save.mutateAsync({ data: outcome.data, state: outcome.state });
       toast.success(outcome.message);
       if (outcome.state === "MID_SEASON_CONTRACT_WINDOW") setTab("market");
+      if (outcome.data.seasons.at(-1)?.rivalSelectionRequired) setTab("h2h");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not read this file.");
     }
@@ -125,37 +142,38 @@ function DashboardPage() {
       <header
         className="flex flex-wrap items-center justify-between gap-4 rounded-lg px-6 py-5"
         style={{
-          background: `linear-gradient(90deg, ${data.team.colour || "#e10600"} 0%, transparent 85%)`,
-          color: data.team.secondaryColour || undefined,
+          background: `linear-gradient(90deg, ${driverMode ? employer.colour : data.team.colour || "#e10600"} 0%, transparent 85%)`,
+          color: driverMode ? undefined : data.team.secondaryColour || undefined,
         }}
       >
         <div>
           <p className="label-caps">
             Season {career.season} · Round {Math.min(done + 1, Math.max(rounds, 1))} of {rounds} ·
-            Competitiveness {competitiveness(data)}
+            {!driverMode && <>Competitiveness {competitiveness(data)}</>}
           </p>
           <h1 className="headline text-4xl" style={{ color: data.team.secondaryColour || undefined }}>
-            {data.team.name || career.name}
+            {driverMode ? employer.name : data.team.name || career.name}
           </h1>
         </div>
-        <div className="text-right">
-          <p className="label-caps">Budget</p>
+        {(!driverMode || realistic) && <div className="text-right">
+          <p className="label-caps">{driverMode ? "Reputation" : "Budget"}</p>
           <p className="headline text-3xl">
-            {money(data.cash)}
-            {done > 0 && data.lastRaceEarnings != null && (
+            {driverMode ? data.driverCareer?.reputation ?? 0 : money(data.cash)}
+            {driverMode && done > 0 && data.driverCareer?.lastReputationChange != null && <span className={`ml-2 align-middle font-mono text-sm ${data.driverCareer.lastReputationChange < 0 ? "text-destructive" : "text-success"}`}>{data.driverCareer.lastReputationChange >= 0 ? "+" : ""}{data.driverCareer.lastReputationChange}</span>}
+            {!driverMode && done > 0 && !seasonDone && data.lastRaceEarnings != null && (
               <span className="ml-2 align-middle font-mono text-sm text-success">
                 +{money(data.lastRaceEarnings)}
               </span>
             )}
           </p>
-        </div>
+        </div>}
       </header>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[15rem_1fr]">
         <nav className="space-y-1">
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const attention =
-              (t.key === "sponsorship" && needsSponsor) || (t.key === "market" && needsDriver);
+              (t.key === "sponsorship" && needsSponsor) || (t.key === "market" && needsDriver) || (t.key === "h2h" && !!season?.rivalSelectionRequired);
             return (
               <button
                 key={t.key}
@@ -217,13 +235,14 @@ function DashboardPage() {
         </nav>
 
         <section>
-          {tab === "development" && <DevelopmentPanel data={data} update={update} />}
+          {tab === "development" && (driverMode ? <SeasonOverviewPanel data={data} /> : <DevelopmentPanel data={data} update={update} />)}
+          {tab === "h2h" && driverMode && <HeadToHeadPanel data={data} update={update} />}
           {tab === "sponsorship" && (
             <SponsorshipPanel data={data} state={state} update={update} apply={apply} />
           )}
           {tab === "standings" && <StandingsPanel data={data} update={update} />}
           {tab === "market" && (
-            <DriverMarketPanel data={data} state={state} update={update} apply={apply} />
+            driverMode ? realistic && <ContractOffersPanel data={data} update={update} /> : <DriverMarketPanel data={data} state={state} update={update} apply={apply} />
           )}
           {tab === "team" && <TeamDetailsPanel data={data} update={update} />}
           {tab === "calendar" && <CalendarDebugPanel data={data} state={state} apply={apply} />}
