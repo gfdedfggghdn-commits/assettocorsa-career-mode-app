@@ -10,6 +10,7 @@ import { PLAYER_DRIVER_ID, PLAYER_TEAM_ID, type CareerData, type SeasonRecord } 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { isDriverCareer, transferPlayer } from "@/lib/career/driver";
 
 type Props = {
   data: CareerData;
@@ -24,6 +25,7 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
   const [index, setIndex] = useState(seasonIndex ?? Math.max(0, seasons.length - 1));
   const [view, setView] = useState<"drivers" | "constructors">("drivers");
   const [editing, setEditing] = useState<StandingRow | null>(null);
+  const [transferTeam, setTransferTeam] = useState<string | null>(null);
   const season = seasons[Math.min(index, seasons.length - 1)];
 
   if (!season) return <p className="text-sm text-muted-foreground">No season has started yet.</p>;
@@ -81,21 +83,24 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
           </DialogHeader>
           <div className="space-y-2">
             {[
-              { id: PLAYER_TEAM_ID, name: data.team.name || "My Team", colour: data.team.colour || "#e10600" },
+              ...(!isDriverCareer(data) ? [{ id: PLAYER_TEAM_ID, name: data.team.name || "My Team", colour: data.team.colour || "#e10600" }] : []),
               ...data.db.teams.filter((t) => t.active !== false),
-              { id: "", name: "Free Agent", colour: "transparent" },
+              ...(editing?.id !== PLAYER_DRIVER_ID ? [{ id: "", name: "Free Agent", colour: "transparent" }] : []),
             ].map((t) => (
               <Button
                 key={t.id || "free"}
                 variant="secondary"
                 className="w-full justify-start"
                 onClick={() => {
-                  const id = editing!.id;
-                  update!((next) => {
+                  if (!editing || !update) return;
+                  const id = editing.id;
+                  if (id === PLAYER_DRIVER_ID) { setTransferTeam(t.id); return; }
+                  update((next) => {
                     const sea = next.seasons[next.seasons.length - 1];
                     if (!sea) return;
-                    if (sea.teamMateId === id && t.id !== PLAYER_TEAM_ID) sea.teamMateId = null;
-                    if (t.id === PLAYER_TEAM_ID) sea.teamMateId = id;
+                    const playerTeam = sea.playerTeamId ?? PLAYER_TEAM_ID;
+                    if (sea.teamMateId === id && t.id !== playerTeam) sea.teamMateId = null;
+                    if (t.id === playerTeam) sea.teamMateId = id;
                     const prevTeam = sea.driverTeams[id] ?? "";
                     for (const r of sea.results) {
                       if (r.positions[id] == null) continue;
@@ -117,6 +122,7 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+      <Dialog open={transferTeam !== null} onOpenChange={o => { if (!o) setTransferTeam(null); }}><DialogContent><DialogHeader><DialogTitle>Confirm mid-season transfer?</DialogTitle></DialogHeader><p className="text-sm text-muted-foreground">This resets your team-mate head-to-head and rivalry. You must choose a new rival before the next race.</p><div className="flex gap-2"><Button variant="secondary" onClick={() => setTransferTeam(null)}>Go back</Button><Button onClick={() => { if (!update || transferTeam === null) return; update(next => { const sea = next.seasons.at(-1); if (sea) transferPlayer(next, sea, transferTeam); }); setTransferTeam(null); setEditing(null); }}>Confirm transfer</Button></div></DialogContent></Dialog>
     </div>
   );
 }
@@ -173,14 +179,14 @@ function DriverTable({
         </thead>
         <tbody>
           {rows.map((r, rank) => {
-            const clickable = !!onPick && r.id !== PLAYER_DRIVER_ID;
+            const clickable = !!onPick && (r.id !== PLAYER_DRIVER_ID || isDriverCareer(data));
             return (
               <tr
                 key={r.id}
                 className={`border-t border-border/60 ${clickable ? "cursor-pointer hover:bg-surface-2" : ""} ${
                   r.id === PLAYER_DRIVER_ID ? "bg-primary/10" : ""
                 }`}
-                onClick={() => clickable && onPick!(r)}
+                onClick={() => { if (clickable && onPick) onPick(r); }}
               >
                 <td className="px-2 py-1 text-right font-mono text-muted-foreground">{rank + 1}</td>
                 <td className="sticky left-0 z-10 whitespace-nowrap bg-surface-1 px-3 py-1">
@@ -234,6 +240,7 @@ function ConstructorTable({ data, season }: { data: CareerData; season: SeasonRe
               <td className="px-2 py-1 text-right font-mono text-muted-foreground">{rank + 1}</td>
               <td className="whitespace-nowrap px-3 py-1">
                 <span className="flex items-center gap-2">
+                  <Flag nationality={r.nationality} />
                   <span className="h-4 w-1 rounded-sm" style={{ background: r.colour }} aria-hidden />
                   {r.label}
                 </span>

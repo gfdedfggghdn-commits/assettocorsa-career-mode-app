@@ -67,7 +67,7 @@ function DashboardPage() {
   const season = currentSeason(data);
   const driverMode = isDriverCareer(data);
   const realistic = isRealistic(data);
-  const employer = seasonTeamInfo(data, season ?? { ...({} as never) }, season?.playerTeamId);
+  const employer = season ? seasonTeamInfo(data, season, season.playerTeamId) : { name: career.name, colour: data.team.colour };
   const tabs = driverMode ? [
     { key: "development" as const, label: "Season overview", icon: Wrench },
     { key: "standings" as const, label: "Standings", icon: Flag },
