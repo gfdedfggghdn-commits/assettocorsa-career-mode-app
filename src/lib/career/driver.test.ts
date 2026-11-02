@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { addOffer, advanceDriverRace, clampChance, clampReputation, h2h, requiredReputation, startDriverSeason, transferPlayer } from "./driver";
 import { constructorStandings } from "./engine";
 import { applyRaceResult, blockedReason } from "./season";
