@@ -46,8 +46,6 @@ export function processResultFile(
   raw: string,
   fileName: string,
 ): UploadOutcome {
-  if (season.results.some(r => r.round === round)) throw new Error("This round already has a result.");
-  if (isDriverCareer(next) && season.rivalSelectionRequired) throw new Error("Choose your rival in Head to head before entering the next race.");
   const blocked = blockedReason(state, data);
   if (blocked) throw new Error(blocked);
 
@@ -69,7 +67,7 @@ export function processResultFile(
 
   const alreadyDone = season.results.map((r) => r.round);
   const target = rounds.find((r) => !alreadyDone.includes(r.round));
-  if (!target) throw new Error(`Round ${rounds[0]!.round} (${track.country}) already has a result.`);
+  if (!target) throw new Error(`Round ${rounds[0]?.round ?? ""} (${track.country}) already has a result.`);
 
   if (season.results.some((r) => r.sourceKey === parsed.sourceKey))
     throw new Error("This result file has already been processed.");
@@ -87,7 +85,8 @@ export function processResultFile(
       if (!unknown.includes(entry.name)) unknown.push(entry.name);
       continue;
     }
-    const id = isPlayer ? PLAYER_DRIVER_ID : driver!.id;
+    const id = isPlayer ? PLAYER_DRIVER_ID : driver?.id;
+    if (!id) continue;
     if (positions[id] != null) continue;
     position += 1;
     positions[id] = position;
@@ -114,6 +113,8 @@ export function applyRaceResult(
   positions: Record<string, number>,
   sourceKey: string,
 ): UploadOutcome {
+  if (season.results.some(r => r.round === round)) throw new Error("This round already has a result.");
+  if (isDriverCareer(next) && season.rivalSelectionRequired) throw new Error("Choose your rival in Head to head before entering the next race.");
   const target = { round };
   const track = { id: trackId, country };
   const result: RaceResult = {

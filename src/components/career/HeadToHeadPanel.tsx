@@ -14,7 +14,7 @@ export function HeadToHeadPanel({ data, update }: { data: CareerData; update: (f
   const available = !season.completed && (season.rivalSelectionRequired || season.results.length >= midSeasonRound(season.calendar.length));
   return <section className="space-y-5"><h2 className="headline text-2xl">Head to head</h2><div className="grid gap-5 lg:grid-cols-2">
     <H2HCard data={data} season={season} other={season.teamMateId} title="Team-mate" start={season.teamMateStartRound ?? 1} />
-    <H2HCard data={data} season={season} other={season.rivalId} title="Rival" start={season.rivalStartRound ?? 1}>
+      <H2HCard data={data} season={season} other={season.rivalId ?? null} title="Rival" start={season.rivalStartRound ?? 1}>
       {!season.rivalId && <Button disabled={!available} onClick={() => setOpen(true)} variant="secondary"><UserPlus className="mr-2 size-4" />{available ? "Select rival" : "Locked until halfway"}</Button>}
     </H2HCard>
   </div>

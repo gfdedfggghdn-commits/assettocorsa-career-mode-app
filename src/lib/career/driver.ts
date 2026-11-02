@@ -9,7 +9,7 @@ export const objectiveText = (position?: number) => `Finish ${position ?? 20}${o
 function ordinalSuffix(n: number) { return n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] ?? "th"); }
 
 export function h2h(season: SeasonRecord, otherId: string | null | undefined, startRound = 1) {
-  const totals = { points: [0, 0], finishes: [0, 0], podiums: [0, 0], total: [0, 0] };
+  const totals: Record<"points" | "finishes" | "podiums" | "total", [number, number]> = { points: [0, 0], finishes: [0, 0], podiums: [0, 0], total: [0, 0] };
   if (!otherId) return totals;
   for (const race of season.results.filter(r => r.round >= startRound)) {
     const a = race.positions[PLAYER_DRIVER_ID]; const b = race.positions[otherId];
@@ -28,7 +28,7 @@ export function h2h(season: SeasonRecord, otherId: string | null | undefined, st
 export function addOffer(season: SeasonRecord, teamId: string, role: DriverRole, source: ContractOffer["source"], replaceDriverId?: string) {
   season.offers ??= [];
   if (source !== "debug" && season.offers.some(o => o.teamId === teamId && o.source === source)) return;
-  season.offers.push({ id: uid(), teamId, role, source, replaceDriverId, roundReceived: season.results.length, status: "pending" });
+  season.offers.push({ id: uid(), teamId, role, source, ...(replaceDriverId ? { replaceDriverId } : {}), roundReceived: season.results.length, status: "pending" });
 }
 
 export function requiredReputation(data: CareerData, teamId: string) {
@@ -91,7 +91,7 @@ export function transferPlayer(data: CareerData, season: SeasonRecord, teamId: s
   data.driverCareer.teamId = teamId;
   season.teamMateId = Object.keys(season.driverTeams).find(id => id !== PLAYER_DRIVER_ID && season.driverTeams[id] === teamId) ?? null;
   season.teamMateStartRound = season.results.length + 1;
-  season.rivalId = null; season.rivalStartRound = undefined; season.rivalSelectionRequired = true;
+  season.rivalId = null; delete season.rivalStartRound; season.rivalSelectionRequired = true;
 }
 
 export function startDriverSeason(data: CareerData, number: number, calendar: string[], selectedTeam: string) {
