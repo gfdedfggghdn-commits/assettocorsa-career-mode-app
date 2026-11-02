@@ -9,7 +9,7 @@ export const objectiveText = (position?: number) => `Finish ${position ?? 20}${o
 function ordinalSuffix(n: number) { return n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] ?? "th"); }
 
 export function h2h(season: SeasonRecord, otherId: string | null | undefined, startRound = 1) {
-  const totals = { points: [0, 0], finishes: [0, 0], podiums: [0, 0], total: [0, 0] };
+  const totals: Record<"points" | "finishes" | "podiums" | "total", [number, number]> = { points: [0, 0], finishes: [0, 0], podiums: [0, 0], total: [0, 0] };
   if (!otherId) return totals;
   for (const race of season.results.filter(r => r.round >= startRound)) {
     const a = race.positions[PLAYER_DRIVER_ID]; const b = race.positions[otherId];
@@ -28,7 +28,7 @@ export function h2h(season: SeasonRecord, otherId: string | null | undefined, st
 export function addOffer(season: SeasonRecord, teamId: string, role: DriverRole, source: ContractOffer["source"], replaceDriverId?: string) {
   season.offers ??= [];
   if (source !== "debug" && season.offers.some(o => o.teamId === teamId && o.source === source)) return;
-  season.offers.push({ id: uid(), teamId, role, source, replaceDriverId, roundReceived: season.results.length, status: "pending" });
+  season.offers.push({ id: uid(), teamId, role, source, ...(replaceDriverId ? { replaceDriverId } : {}), roundReceived: season.results.length, status: "pending" });
 }
 
 export function requiredReputation(data: CareerData, teamId: string) {
@@ -91,7 +91,7 @@ export function transferPlayer(data: CareerData, season: SeasonRecord, teamId: s
   data.driverCareer.teamId = teamId;
   season.teamMateId = Object.keys(season.driverTeams).find(id => id !== PLAYER_DRIVER_ID && season.driverTeams[id] === teamId) ?? null;
   season.teamMateStartRound = season.results.length + 1;
-  season.rivalId = null; season.rivalStartRound = undefined; season.rivalSelectionRequired = true;
+  season.rivalId = null; delete season.rivalStartRound; season.rivalSelectionRequired = true;
 }
 
 export function startDriverSeason(data: CareerData, number: number, calendar: string[], selectedTeam: string) {
@@ -102,11 +102,12 @@ export function startDriverSeason(data: CareerData, number: number, calendar: st
   const teamId = accepted?.teamId ?? selectedTeam;
   const team = data.db.teams.find(t => t.id === teamId && t.active !== false);
   if (!team) throw new Error("Choose an active team.");
-  const mapping: Record<string, string> = previous ? { ...previous.driverTeams } : Object.fromEntries(data.db.season1.flatMap(e => e.driverIds.map(id => [id, e.teamId])));
+  const mapping: Record<string, string> = previous ? { ...previous.driverTeams } : Object.fromEntries(data.db.season1.flatMap(e => e.driverIds.filter(Boolean).map(id => [id, e.teamId])));
   delete mapping[PLAYER_DRIVER_ID];
   const role = accepted?.role ?? driver.role;
   const teammates = Object.keys(mapping).filter(id => mapping[id] === teamId);
-  const replaced = accepted?.replaceDriverId ?? teammates[role - 1];
+  const sameTeam = previous?.playerTeamId === teamId;
+  const replaced = accepted?.replaceDriverId ?? (!sameTeam ? teammates.find(id => (previous?.driverRoles?.[id] ?? (teammates.indexOf(id) + 1)) === role) : undefined);
   if (replaced) delete mapping[replaced];
   mapping[PLAYER_DRIVER_ID] = teamId;
   driver.teamId = teamId; driver.role = role; driver.academyLocked = true; driver.lastReputationChange = null;

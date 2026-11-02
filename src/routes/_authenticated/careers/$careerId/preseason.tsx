@@ -37,6 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { DriverPreseason } from "@/components/career/DriverPreseason";
 import { ArrowLeft, ArrowRight, Check, Download, Plus, Upload, X } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/careers/$careerId/preseason")({
@@ -45,6 +46,8 @@ export const Route = createFileRoute("/_authenticated/careers/$careerId/preseaso
       { title: "Pre-season — MyTeam Career Mode" },
       { name: "description", content: "Set up your databases, team, sponsors and calendar before the season starts." },
       { property: "og:title", content: "Pre-season — MyTeam Career Mode" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "Set up your databases, team, sponsors and calendar before the season starts.",
@@ -85,6 +88,10 @@ function Preseason() {
   if (isLoading || !career || !draft) {
     return <div className="p-10 text-sm text-muted-foreground">Loading pre-season…</div>;
   }
+
+  if (career.data.mode === "driver") return <DriverPreseason career={career}
+    persist={async data => { await save.mutateAsync({ data }); }}
+    start={async data => { await save.mutateAsync({ data, state: "ACTIVE_SEASON" }); await navigate({ to: "/careers/$careerId/dashboard", params: { careerId } }); }} />;
 
   const patch = (fn: (d: CareerData) => void) => {
     setDraft((prev) => {

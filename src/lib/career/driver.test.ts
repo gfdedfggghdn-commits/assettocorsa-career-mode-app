@@ -1,0 +1,32 @@
+import { describe, expect, test } from "vitest";
+import { addOffer, advanceDriverRace, clampChance, clampReputation, h2h, requiredReputation, startDriverSeason, transferPlayer } from "./driver";
+import { constructorStandings } from "./engine";
+import { applyRaceResult, blockedReason } from "./season";
+import { emptyCareerData, PLAYER_DRIVER_ID } from "./types";
+
+function fixture(basic = false) {
+  const data = emptyCareerData();
+  data.mode = "driver";
+  data.driverCareer = { contractSystem: basic ? "basic" : "realistic", reputation: 500, lastReputationChange: null, academyId: "academy", academyLocked: false, teamId: "a", role: 2 };
+  data.db.teams = ["a", "b"].map(id => ({ id, name: id, nationality: "Netherlands", colour: "red", powerUnitId: "pu", active: true, startingReputation: 500, contractRequirement: 600, objectivePosition: 2, academyId: "academy" }));
+  data.db.academies = [{ id: "academy", name: "Academy", colour: "red", reputationDiscount: 100 }];
+  data.db.season1 = [{ teamId: "a", driverIds: ["mate", "replaced"] }, { teamId: "b", driverIds: ["rival", "other"] }];
+  data.db.contractChance = 100;
+  const season = startDriverSeason(data, 1, ["track", "track", "track", "track"], "a");
+  return { data, season };
+}
+
+describe("Driver Career rules", () => {
+  test("reputation remains between 0 and 1000", () => { expect(clampReputation(-1)).toBe(0); expect(clampReputation(1001)).toBe(1000); });
+  test("contract chance remains between 5 and 100 percent", () => { expect(clampChance(0)).toBe(5); expect(clampChance(101)).toBe(100); });
+  test("academy discounts reputation requirement", () => { const { data } = fixture(); expect(requiredReputation(data, "b")).toBe(500); });
+  test("player replaces second seat and locks academy", () => { const { data, season } = fixture(); expect(season.driverTeams["replaced"]).toBeUndefined(); expect(season.teamMateId).toBe("mate"); expect(data.driverCareer?.academyLocked).toBe(true); });
+  test("driver races never earn team cash or open sponsor windows", () => { const { data, season } = fixture(); const out = applyRaceResult(data, season, 1, "track", "Netherlands", { [PLAYER_DRIVER_ID]: 1, mate: 2 }, "one"); expect(out.data.cash).toBe(0); expect(out.state).toBe("ACTIVE_SEASON"); });
+  test("rival selection blocks uploads after halfway", () => { const { data, season } = fixture(true); applyRaceResult(data, season, 1, "track", "Netherlands", { [PLAYER_DRIVER_ID]: 1, mate: 2 }, "one"); applyRaceResult(data, season, 2, "track", "Netherlands", { [PLAYER_DRIVER_ID]: 1, mate: 2 }, "two"); expect(blockedReason("ACTIVE_SEASON", data)).toContain("Choose your rival"); expect(() => applyRaceResult(data, season, 3, "track", "Netherlands", {}, "three")).toThrow("Choose your rival"); });
+  test("offers arrive gradually and remain after reputation drops", () => { const { data, season } = fixture(); season.results.push({ round: 1, trackId: "track", positions: {}, uploadedAt: "", sourceKey: "1" }); advanceDriverRace(data, season, {}, () => 0.99); expect(season.offers).toHaveLength(0); expect(season.teamRolls).toEqual({ a: true, b: true }); season.results.push({ round: 2, trackId: "track", positions: {}, uploadedAt: "", sourceKey: "2" }); advanceDriverRace(data, season, {}); expect(season.offers).toHaveLength(0); season.results.push({ round: 3, trackId: "track", positions: {}, uploadedAt: "", sourceKey: "3" }); advanceDriverRace(data, season, {}); expect(season.offers).toHaveLength(0); season.results.push({ round: 4, trackId: "track", positions: { [PLAYER_DRIVER_ID]: 1 }, uploadedAt: "", sourceKey: "4" }); advanceDriverRace(data, season, {}); expect(season.offers?.filter(o => o.source === "chance")).toHaveLength(2); if (data.driverCareer) data.driverCareer.reputation = 0; advanceDriverRace(data, season, {}); expect(season.offers?.filter(o => o.source === "chance")).toHaveLength(2); });
+  test("accepted offer applies next season, not current season", () => { const { data, season } = fixture(); addOffer(season, "b", 1, "rival", "rival"); const offer = season.offers?.[0]; if (offer) offer.status = "accepted"; expect(season.playerTeamId).toBe("a"); const next = startDriverSeason(data, 2, ["track"], "a"); expect(next.playerTeamId).toBe("b"); expect(next.playerRole).toBe(1); expect(next.driverTeams["rival"]).toBeUndefined(); });
+  test("renewing with own team retains teammate", () => { const { data, season } = fixture(); addOffer(season, "a", 1, "teammate"); const offer = season.offers?.[0]; if (offer) offer.status = "accepted"; const next = startDriverSeason(data, 2, ["track"], "a"); expect(next.teamMateId).toBe("mate"); expect(next.driverRoles?.["mate"]).toBe(2); });
+  test("self-transfer preserves constructor points and resets rivalries", () => { const { data, season } = fixture(); applyRaceResult(data, season, 1, "track", "Netherlands", { [PLAYER_DRIVER_ID]: 1, mate: 2 }, "one"); season.rivalId = "rival"; transferPlayer(data, season, "b"); expect(constructorStandings(data, season).find(r => r.id === "a")?.total).toBe(43); expect(constructorStandings(data, season).find(r => r.id === "b")?.total).toBe(0); expect(season.rivalId).toBeNull(); expect(season.teamMateStartRound).toBe(2); expect(season.rivalSelectionRequired).toBe(true); });
+  test("H2H counts points, better finishes and podiums", () => { const { data, season } = fixture(true); applyRaceResult(data, season, 1, "track", "Netherlands", { [PLAYER_DRIVER_ID]: 1, mate: 4 }, "one"); expect(h2h(season, "mate")).toEqual({ points: [25, 12], finishes: [1, 0], podiums: [1, 0], total: [3, 0] }); expect(data.driverCareer?.reputation).toBe(500); expect(season.offers).toHaveLength(0); });
+  test("won rival H2H bypasses chance and reputation", () => { const { data, season } = fixture(); season.teamRolls = { a: false, b: false }; season.rivalId = "rival"; season.rivalStartRound = 3; if (data.driverCareer) data.driverCareer.reputation = 0; for (let round = 1; round <= 4; round++) season.results.push({ round, trackId: "track", positions: { [PLAYER_DRIVER_ID]: 1, mate: 4, rival: 5 }, uploadedAt: "", sourceKey: String(round) }); advanceDriverRace(data, season, {}); expect(season.offers?.find(o => o.source === "rival")).toMatchObject({ teamId: "b", role: 1, replaceDriverId: "rival" }); expect(season.offers?.find(o => o.source === "teammate")).toMatchObject({ teamId: "a", role: 1 }); });
+});

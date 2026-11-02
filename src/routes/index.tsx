@@ -13,6 +13,8 @@ export const Route = createFileRoute("/")({
           "Build your own team, sign sponsors and drivers, develop the car and upload your Assetto Corsa race results to advance a full career.",
       },
       { property: "og:title", content: "MyTeam Career Mode — Assetto Corsa season manager" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content:

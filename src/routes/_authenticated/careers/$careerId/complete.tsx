@@ -16,6 +16,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { StandingsPanel } from "@/components/career/StandingsPanel";
 import { CheckCircle2 } from "lucide-react";
+import { isDriverCareer, isRealistic } from "@/lib/career/driver";
+import { HeadToHeadPanel } from "@/components/career/HeadToHeadPanel";
+import { ContractOffersPanel } from "@/components/career/ContractOffersPanel";
+import { Flag } from "@/lib/career/flags";
 
 export const Route = createFileRoute("/_authenticated/careers/$careerId/complete")({
   head: () => ({
@@ -42,12 +46,15 @@ function CompletePage() {
   const [manualMet, setManualMet] = useState(false);
   const [regPU, setRegPU] = useState(false);
   const [regChassis, setRegChassis] = useState(false);
+  const [nextTeam, setNextTeam] = useState("");
 
   if (isLoading || !career) {
     return <div className="p-10 text-sm text-muted-foreground">Loading season…</div>;
   }
 
   const data = career.data;
+  const driverMode = isDriverCareer(data);
+  const realistic = isRealistic(data);
   const season = currentSeason(data);
   if (!season) {
     return <div className="p-10 text-sm text-muted-foreground">No season to summarise.</div>;
@@ -62,7 +69,7 @@ function CompletePage() {
   const objectiveMet = auto ? pointFinishes >= (sponsor?.objectiveCount ?? 0) : manualMet;
   const reward = objectiveMet ? (sponsor?.objectiveReward ?? 0) : 0;
   const prize = prizeMoneyFor(data, myPos);
-  const newBalance = data.cash + reward + prize;
+  const newBalance = driverMode ? data.cash : data.cash + reward + prize;
 
   const alreadyPaid = career.state === "PRESEASON";
 
@@ -72,6 +79,8 @@ function CompletePage() {
       return;
     }
     const next: CareerData = structuredClone(data);
+    if (driverMode && !realistic && next.driverCareer && nextTeam) next.driverCareer.teamId = nextTeam;
+    if (driverMode && next.driverCareer) next.driverCareer.lastReputationChange = null;
     const sea = next.seasons[next.seasons.length - 1];
     if (sea) {
       captureSnapshot(next, sea);
@@ -80,8 +89,8 @@ function CompletePage() {
     }
     next.cash = newBalance;
     // regulation changes wipe that department's upgrades for everyone
-    if (regPU) next.development.powerUnit = 0;
-    if (regChassis) next.development.chassis = 0;
+    if (!driverMode && regPU) next.development.powerUnit = 0;
+    if (!driverMode && regChassis) next.development.chassis = 0;
     next.lastRaceEarnings = null;
     // +1 F1 year for every driver who raced at least 25% of the season's rounds
     if (sea) {
@@ -109,9 +118,9 @@ function CompletePage() {
       <Row label="Your driver position" value={pos(myDriverPos)} />
       <Row label="Team mate's driver position" value={season.teamMateId ? pos(matePos) : "No team mate"} />
       <Row label="Your constructor position" value={`P${myPos}`} />
-      <Row label="Constructor payout" value={money(prize)} green />
+      {!driverMode && <Row label="Constructor payout" value={money(prize)} green />}
 
-      <div className="panel space-y-3 p-6">
+      {!driverMode && <div className="panel space-y-3 p-6">
         <p className="label-caps">Major sponsor</p>
         {sponsor ? (
           <>
@@ -138,9 +147,9 @@ function CompletePage() {
         ) : (
           <p className="text-sm text-muted-foreground">No major sponsor this season.</p>
         )}
-      </div>
+      </div>}
 
-      <div className="panel space-y-3 p-6">
+      {!driverMode && <div className="panel space-y-3 p-6">
         <h2 className="headline text-2xl">Regulation changes</h2>
         <p className="text-xs text-muted-foreground">
           Turning a department on resets every upgrade in it for the whole grid next season.
@@ -153,14 +162,18 @@ function CompletePage() {
           Chassis
           <Switch disabled={alreadyPaid} checked={regChassis} onCheckedChange={setRegChassis} aria-label="Chassis regulation change" />
         </label>
-      </div>
+      </div>}
 
-      <Row label="New balance" value={money(newBalance)} />
+      {!driverMode && <Row label="New balance" value={money(newBalance)} />}
+
+      {driverMode && <HeadToHeadPanel data={data} update={fn => { const next = structuredClone(data); fn(next); void save.mutateAsync({ data: next }); }} />}
+      {realistic && <ContractOffersPanel data={data} update={fn => { const next = structuredClone(data); fn(next); void save.mutateAsync({ data: next }); }} />}
+      {driverMode && !realistic && <section className="space-y-4 py-5"><h2 className="headline text-2xl">Next season's team</h2><div className="grid gap-3 sm:grid-cols-2">{data.db.teams.filter(t => t.active !== false).map(t => <Button key={t.id} variant={nextTeam === t.id ? "default" : "secondary"} aria-pressed={nextTeam === t.id} onClick={() => setNextTeam(t.id)}><Flag nationality={t.nationality} /><span className="mx-2 h-5 w-1" style={{ backgroundColor: t.colour }} />{t.name}</Button>)}</div></section>}
 
       <StandingsPanel data={data} />
 
-      <Button onClick={finish} disabled={save.isPending}>
-        {alreadyPaid ? "Go to pre-season" : "Collect payouts — go to pre-season"}
+      <Button onClick={finish} disabled={save.isPending || (driverMode && !realistic && !nextTeam && !alreadyPaid)}>
+        {alreadyPaid || driverMode ? "Go to pre-season" : "Collect payouts — go to pre-season"}
       </Button>
     </main>
   );
