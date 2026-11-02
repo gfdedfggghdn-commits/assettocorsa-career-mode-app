@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { currentSeason, driverTeamOf, money, seasonDriverInfo, seasonTrackInfo, teamLabel } from "@/lib/career/engine";
-import { applyRaceResult } from "@/lib/career/season";
+import { applyRaceResult, blockedReason } from "@/lib/career/season";
+import { isDriverCareer } from "@/lib/career/driver";
 import { Flag } from "@/lib/career/flags";
 import { PLAYER_DRIVER_ID, type CareerData, type CareerState } from "@/lib/career/types";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
@@ -107,10 +108,14 @@ export function CalendarDebugPanel({
     let msg = "";
     let nextState: CareerState = state;
     const next = structuredClone(data);
-    const sea = next.seasons[next.seasons.length - 1]!;
-    const trackId = sea.calendar[round - 1]!;
+    const sea = next.seasons[next.seasons.length - 1];
+    const trackId = sea?.calendar[round - 1];
+    if (!sea || !trackId) return;
+    const reason = blockedReason(state, data);
+    if (reason) { toast.error(reason); return; }
     const out = applyRaceResult(next, sea, round, trackId, seasonTrackInfo(data, season, trackId).country, positions, `manual-${Date.now()}`);
-    sea.results.find((r) => r.round === round)!.manual = true;
+    const saved = sea.results.find((r) => r.round === round);
+    if (saved) saved.manual = true;
     msg = out.message;
     nextState = out.state;
     apply((d) => Object.assign(d, out.data), nextState);
@@ -118,7 +123,7 @@ export function CalendarDebugPanel({
     setEntering(null);
   };
 
-  const canEnter = ENTRY_STATES.includes(state);
+  const canEnter = ENTRY_STATES.includes(state) && !blockedReason(state, data);
   const used = new Set(picks.filter(Boolean));
 
   return (
@@ -153,7 +158,7 @@ export function CalendarDebugPanel({
                 <>
                   <span className="label-caps text-success">
                     {res.manual ? "Entered by hand" : "Uploaded"}
-                    {res.earned != null && ` · ${money(res.earned)}`}
+                    {!isDriverCareer(data) && res.earned != null && ` · ${money(res.earned)}`}
                   </span>
                   <Button size="sm" variant="secondary" onClick={() => removeResult(round)}>
                     <Trash2 className="mr-1 size-3" /> Remove result

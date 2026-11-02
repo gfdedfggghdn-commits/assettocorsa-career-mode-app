@@ -13,6 +13,8 @@ export const Route = createFileRoute("/auth")({
       { title: "Sign in — MyTeam Career Mode" },
       { name: "description", content: "Sign in to load your MyTeam career saves on any device." },
       { property: "og:title", content: "Sign in — MyTeam Career Mode" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "Sign in to load your MyTeam career saves on any device.",

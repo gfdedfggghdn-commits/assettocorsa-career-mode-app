@@ -26,7 +26,7 @@ export function DriverPreseason({ career, persist, start }: { career: Career; pe
     {phase === 2 && <div className="space-y-6">
       <h2 className="headline text-2xl">Your team</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{data.db.teams.filter(t => t.active !== false).map(team => <Button key={team.id}
-        variant="secondary" disabled={!!accepted && accepted.teamId !== team.id} aria-pressed={teamId === team.id}
+        variant="secondary" disabled={data.driverCareer?.contractSystem === "realistic" && !!previous && teamId !== team.id} aria-pressed={teamId === team.id}
         className={`relative h-auto min-h-36 justify-start overflow-hidden p-5 text-left whitespace-normal ${teamId === team.id ? "ring-2 ring-primary" : ""}`}
         onClick={() => update(d => { if (d.driverCareer) d.driverCareer.teamId = team.id; })}>
         <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: team.colour }} />

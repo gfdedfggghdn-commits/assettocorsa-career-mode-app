@@ -3,6 +3,14 @@ import { useEffect } from "react";
 import { useCareer } from "@/lib/career/api";
 
 export const Route = createFileRoute("/_authenticated/careers/$careerId/")({
+  head: () => ({ meta: [
+    { title: "Continue career — AC Career Mode" },
+    { name: "description", content: "Continue your Assetto Corsa MyTeam or Driver Career season." },
+    { property: "og:title", content: "Continue career — AC Career Mode" },
+    { property: "og:description", content: "Continue your Assetto Corsa MyTeam or Driver Career season." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
+  ] }),
   component: CareerRouter,
 });
 
