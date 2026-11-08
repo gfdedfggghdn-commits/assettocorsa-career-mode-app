@@ -24,7 +24,7 @@ import { SeasonConfiguration } from "./SeasonConfiguration";
 
 type Props = {
   data: CareerData;
-  update: (fn: (d: CareerData) => void) => void;
+  update: (fn: (d: CareerData) => void) => void | Promise<void>;
   seasonNumber?: number;
   onDirtyChange?: (dirty: boolean) => void;
 };
@@ -34,6 +34,7 @@ type PrizeRow = PrizeMoneyRow & { id: string };
 export function DatabasesPanel({ data, update, seasonNumber = data.seasons.at(-1)?.number ?? 1, onDirtyChange }: Props) {
   const [db, setDb] = useState<CareerDatabases>(() => structuredClone(data.db));
   const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
 
   useEffect(() => {
@@ -63,48 +64,6 @@ export function DatabasesPanel({ data, update, seasonNumber = data.seasons.at(-1
           </p>
         </div>
         </div>
-      <EntityEditor<Driver>
-        title="Drivers"
-        fields={[
-          { key: "firstName", label: "First name" },
-          { key: "lastName", label: "Last name" },
-          { key: "nationality", label: "Nationality" },
-          { key: "racecraft", label: "Racecraft", type: "number" },
-          { key: "pace", label: "Pace", type: "number" },
-          { key: "aggressiveness", label: "Aggression", type: "number" },
-          { key: "f1Years", label: "F1 years", type: "number" },
-        ]}
-        rows={db.drivers}
-        makeEmpty={() => ({ id: uid(), firstName: "", lastName: "", nationality: "", racecraft: 50, pace: 50, aggressiveness: 50, f1Years: 0 })}
-        onChange={rows => patch(d => { d.drivers = rows; })}
-        extra={<SetBar kind="drivers" rows={db.drivers} onLoad={rows => patch(d => { d.drivers = rows; })} />}
-      />
-      <div className="hidden">
-        <div className="flex items-center gap-2">
-          {dirty && <span className="label-caps text-accent">Unsaved changes</span>}
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setDb(structuredClone(data.db));
-              setDirty(false);
-            }}
-            disabled={!dirty}
-          >
-            Discard
-          </Button>
-          <Button
-            disabled={!dirty}
-            onClick={() => {
-              update((d) => void (d.db = structuredClone(db)));
-              setDirty(false);
-              toast.success("Databases saved.");
-            }}
-          >
-            <Save className="mr-1 size-4" /> Save changes
-          </Button>
-        </div>
-      </div>
-
       <EntityEditor<Driver>
         title="Drivers"
         fields={[
@@ -335,7 +294,7 @@ export function DatabasesPanel({ data, update, seasonNumber = data.seasons.at(-1
       <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-5">
         <p className="mr-auto text-sm text-muted-foreground">Save all changes here, then proceed.</p>
         <Button variant="secondary" disabled={!dirty} onClick={() => { setDb(structuredClone(data.db)); setDirty(false); }}>Discard</Button>
-        <Button disabled={!dirty} onClick={() => { update(d => { d.db = structuredClone(db); }); setDirty(false); toast.success("Databases saved."); }}><Save className="mr-2 size-4" />Save changes</Button>
+        <Button disabled={!dirty || saving} onClick={async () => { setSaving(true); try { await update(d => { d.db = structuredClone(db); }); setDirty(false); toast.success("Databases saved."); } catch { toast.error("Could not save databases. Please try again."); } finally { setSaving(false); } }}><Save className="mr-2 size-4" />Save changes</Button>
       </footer>
     </div>
   );
