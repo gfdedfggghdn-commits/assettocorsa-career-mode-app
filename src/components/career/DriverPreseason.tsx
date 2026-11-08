@@ -15,14 +15,15 @@ export function DriverPreseason({ career, persist, start }: { career: Career; pe
   const [calendar, setCalendar] = useState<string[]>(currentSeason(career.data)?.calendar ?? []);
   const [track, setTrack] = useState("");
   const [busy, setBusy] = useState(false);
+  const [databaseDirty, setDatabaseDirty] = useState(false);
   const previous = currentSeason(data);
   const accepted = previous?.offers?.find(o => o.status === "accepted");
-  const update = (fn: (d: CareerData) => void) => { const next = structuredClone(data); fn(next); setData(next); void persist(next); };
+  const update = async (fn: (d: CareerData) => void) => { const next = structuredClone(data); fn(next); await persist(next); setData(next); };
   const teamId = accepted?.teamId ?? data.driverCareer?.teamId;
   return <main className="mx-auto max-w-6xl space-y-8 px-5 py-10">
     <header><p className="label-caps">Driver Career · Season {career.season}</p><h1 className="headline text-4xl">{career.name}</h1></header>
-    <nav className="flex flex-wrap gap-2">{["Databases", "Team & Academy", "Calendar"].map((label, i) => <Button key={label} variant={phase === i + 1 ? "default" : "secondary"} onClick={() => setPhase(i + 1)}>{i + 1}. {label}</Button>)}</nav>
-    {phase === 1 && <DatabasesPanel data={data} update={update} />}
+    <nav className="flex flex-wrap gap-2">{["Databases", "Team & Academy", "Calendar"].map((label, i) => <Button key={label} disabled={databaseDirty && i !== 0} variant={phase === i + 1 ? "default" : "secondary"} onClick={() => setPhase(i + 1)}>{i + 1}. {label}</Button>)}</nav>
+    {phase === 1 && <DatabasesPanel data={data} update={update} seasonNumber={career.season} onDirtyChange={setDatabaseDirty} />}
     {phase === 2 && <div className="space-y-6">
       <h2 className="headline text-2xl">Your team</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{data.db.teams.filter(t => t.active !== false).map(team => <Button key={team.id}
@@ -46,7 +47,7 @@ export function DriverPreseason({ career, persist, start }: { career: Career; pe
       <div className="divide-y divide-border">{calendar.map((id, i) => <div key={`${id}-${i}`} className="flex items-center gap-3 py-3"><span className="font-mono">R{i + 1}</span><Flag nationality={data.db.tracks.find(t => t.id === id)?.country ?? ""} /><span className="flex-1">{data.db.tracks.find(t => t.id === id)?.country}</span><Button size="icon" variant="ghost" aria-label={`Remove round ${i + 1}`} onClick={() => setCalendar(calendar.filter((_, j) => j !== i))}><Trash2 className="size-4" /></Button></div>)}</div>
       <div className="flex gap-2"><Label className="sr-only" htmlFor="driver-track">Track</Label><select id="driver-track" className="h-9 min-w-0 flex-1 rounded-md border border-input bg-surface-2 px-2" value={track} onChange={e => setTrack(e.target.value)}><option value="">Select a track</option>{data.db.tracks.map(t => <option key={t.id} value={t.id}>{t.country} · {t.city}</option>)}</select><Button disabled={!track} onClick={() => { setCalendar([...calendar, track]); setTrack(""); }}><Plus className="mr-2 size-4" />Add</Button></div>
     </section>}
-    <footer className="flex justify-between gap-4"><Button variant="secondary" disabled={phase === 1 || busy} onClick={() => setPhase(phase - 1)}>Back</Button><Button disabled={busy} onClick={async () => {
+    <footer className="flex justify-between gap-4"><Button variant="secondary" disabled={phase === 1 || busy} onClick={() => setPhase(phase - 1)}>Back</Button><Button disabled={busy || databaseDirty} onClick={async () => {
       if (phase === 2 && !teamId) { toast.error("Choose your team."); return; }
       if (phase === 3 && (!calendar.length || !teamId || !data.db.playerNames[0]?.name)) { toast.error("Choose a team, add your driver name and at least one race."); return; }
       setBusy(true);

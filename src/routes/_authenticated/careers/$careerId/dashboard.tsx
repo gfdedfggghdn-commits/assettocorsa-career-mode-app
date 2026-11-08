@@ -18,7 +18,9 @@ import { DatabasesPanel } from "@/components/career/DatabasesPanel";
 import { SeasonOverviewPanel } from "@/components/career/SeasonOverviewPanel";
 import { HeadToHeadPanel } from "@/components/career/HeadToHeadPanel";
 import { ContractOffersPanel } from "@/components/career/ContractOffersPanel";
-import { isDriverCareer, isRealistic } from "@/lib/career/driver";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { clampReputation, isDriverCareer, isRealistic } from "@/lib/career/driver";
 import { seasonTeamInfo } from "@/lib/career/engine";
 
 export const Route = createFileRoute("/_authenticated/careers/$careerId/dashboard")({
@@ -56,6 +58,8 @@ function DashboardPage() {
   const save = useSaveCareer(careerId);
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("development");
+  const [databaseDirty, setDatabaseDirty] = useState(false);
+  const [debugReputation, setDebugReputation] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
   if (isLoading || !career) {
@@ -80,7 +84,7 @@ function DashboardPage() {
   const update = (fn: (d: CareerData) => void) => {
     const next = structuredClone(data);
     fn(next);
-    void save.mutateAsync({ data: next });
+    return save.mutateAsync({ data: next });
   };
 
   const apply = (fn: (d: CareerData) => void, nextState: CareerState) => {
@@ -132,6 +136,7 @@ function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-8">
+      {databaseDirty && <div role="alert" className="sticky top-2 z-30 mb-4 rounded-md bg-warning p-4 font-semibold text-warning-foreground">Unsaved databases. Use Save changes at the bottom of the Databases tab before leaving.</div>}
       <button
         className="label-caps mb-4 flex items-center gap-1 hover:text-foreground"
         onClick={() => navigate({ to: "/careers" })}
@@ -177,6 +182,7 @@ function DashboardPage() {
             return (
               <button
                 key={t.key}
+                disabled={databaseDirty && t.key !== "databases"}
                 onClick={() => setTab(t.key)}
                 className={`headline flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base uppercase transition-colors ${
                   tab === t.key
@@ -234,7 +240,7 @@ function DashboardPage() {
           </div>
         </nav>
 
-        <section>
+        <section className="min-w-0">
           {tab === "development" && (driverMode ? <SeasonOverviewPanel data={data} /> : <DevelopmentPanel data={data} update={update} />)}
           {tab === "h2h" && driverMode && <HeadToHeadPanel data={data} update={update} />}
           {tab === "sponsorship" && (
@@ -245,8 +251,8 @@ function DashboardPage() {
             driverMode ? realistic && <ContractOffersPanel data={data} update={update} /> : <DriverMarketPanel data={data} state={state} update={update} apply={apply} />
           )}
           {tab === "team" && <TeamDetailsPanel data={data} update={update} />}
-          {tab === "calendar" && <CalendarDebugPanel data={data} state={state} apply={apply} />}
-          {tab === "databases" && <DatabasesPanel data={data} update={update} />}
+          {tab === "calendar" && <><CalendarDebugPanel data={data} state={state} apply={apply} />{realistic && <div className="mt-6 space-y-3 border-t border-border pt-5"><h3 className="headline text-xl">Reputation debug</h3><Label htmlFor="debug-reputation">Set reputation (0–1000)</Label><div className="flex gap-3"><Input id="debug-reputation" type="number" min={0} max={1000} value={debugReputation} placeholder={String(data.driverCareer?.reputation ?? 0)} onChange={e => setDebugReputation(e.target.value)} /><Button disabled={debugReputation === "" || save.isPending} onClick={async () => { await update(d => { if (d.driverCareer) { d.driverCareer.reputation = clampReputation(Number(debugReputation)); d.driverCareer.lastReputationChange = null; } }); toast.success("Reputation updated."); }}>Set reputation</Button></div></div>}</>}
+          {tab === "databases" && <DatabasesPanel data={data} update={update} seasonNumber={career.season} onDirtyChange={setDatabaseDirty} />}
         </section>
       </div>
     </main>
