@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 export type FieldType = "text" | "number" | "switch" | "color" | "select";
 
@@ -35,6 +36,17 @@ export function EntityEditor<T extends { id: string }>({
   readOnly,
   extra,
 }: Props<T>) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [overflow, setOverflow] = useState(false);
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const measure = () => setOverflow(element.scrollWidth > element.clientWidth + 1);
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    measure();
+    return () => observer.disconnect();
+  }, [rows.length, fields.length]);
   const update = (index: number, key: string, value: unknown) => {
     const next = rows.slice();
     next[index] = { ...(next[index] as T), [key]: value } as T;
@@ -59,7 +71,9 @@ export function EntityEditor<T extends { id: string }>({
       </div>
 
       {rows.length > 0 && (
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 min-w-0">
+          {overflow && <div className="mb-2 flex items-center justify-between text-sm text-warning"><span>More fields to the right →</span><Button size="sm" variant="secondary" onClick={() => scrollRef.current?.scrollBy({ left: 320, behavior: "smooth" })} aria-label={`Show more ${title} fields`}>→</Button></div>}
+        <div ref={scrollRef} className="overflow-x-auto pb-3" tabIndex={0} aria-label={`${title} fields`}>
           <table className="w-full text-sm">
             <thead>
               <tr>
@@ -137,6 +151,7 @@ export function EntityEditor<T extends { id: string }>({
               ))}
             </tbody>
           </table>
+        </div>
         </div>
       )}
       {rows.length === 0 && (

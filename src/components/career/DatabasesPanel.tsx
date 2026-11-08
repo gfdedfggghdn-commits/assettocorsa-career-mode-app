@@ -20,17 +20,21 @@ import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { DriverSettingsPanel, driverTeamFields } from "./DriverSettingsPanel";
 import { isDriverCareer, isRealistic, clampReputation } from "@/lib/career/driver";
+import { SeasonConfiguration } from "./SeasonConfiguration";
 
 type Props = {
   data: CareerData;
   update: (fn: (d: CareerData) => void) => void;
+  seasonNumber?: number;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 type PrizeRow = PrizeMoneyRow & { id: string };
 
-export function DatabasesPanel({ data, update }: Props) {
+export function DatabasesPanel({ data, update, seasonNumber = data.seasons.at(-1)?.number ?? 1, onDirtyChange }: Props) {
   const [db, setDb] = useState<CareerDatabases>(() => structuredClone(data.db));
   const [dirty, setDirty] = useState(false);
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
 
   useEffect(() => {
     if (!dirty) setDb(structuredClone(data.db));
@@ -50,6 +54,7 @@ export function DatabasesPanel({ data, update }: Props) {
 
   return (
     <div className="space-y-5">
+      {dirty && <div role="alert" className="sticky top-2 z-20 rounded-md bg-warning p-4 text-sm font-semibold text-warning-foreground">Unsaved database changes. Save changes at the bottom of this page before switching tabs or proceeding.</div>}
       <div className="panel flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <h2 className="headline text-2xl">Databases</h2>
@@ -57,6 +62,24 @@ export function DatabasesPanel({ data, update }: Props) {
             Edit drivers, teams, sponsors and tracks mid-season. Changes only apply once you save.
           </p>
         </div>
+        </div>
+      <EntityEditor<Driver>
+        title="Drivers"
+        fields={[
+          { key: "firstName", label: "First name" },
+          { key: "lastName", label: "Last name" },
+          { key: "nationality", label: "Nationality" },
+          { key: "racecraft", label: "Racecraft", type: "number" },
+          { key: "pace", label: "Pace", type: "number" },
+          { key: "aggressiveness", label: "Aggression", type: "number" },
+          { key: "f1Years", label: "F1 years", type: "number" },
+        ]}
+        rows={db.drivers}
+        makeEmpty={() => ({ id: uid(), firstName: "", lastName: "", nationality: "", racecraft: 50, pace: 50, aggressiveness: 50, f1Years: 0 })}
+        onChange={rows => patch(d => { d.drivers = rows; })}
+        extra={<SetBar kind="drivers" rows={db.drivers} onLoad={rows => patch(d => { d.drivers = rows; })} />}
+      />
+      <div className="hidden">
         <div className="flex items-center gap-2">
           {dirty && <span className="label-caps text-accent">Unsaved changes</span>}
           <Button
@@ -308,6 +331,12 @@ export function DatabasesPanel({ data, update }: Props) {
         }
       />
       </>}
+      <SeasonConfiguration db={db} seasonNumber={seasonNumber} patch={patch} />
+      <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-5">
+        <p className="mr-auto text-sm text-muted-foreground">Save all changes here, then proceed.</p>
+        <Button variant="secondary" disabled={!dirty} onClick={() => { setDb(structuredClone(data.db)); setDirty(false); }}>Discard</Button>
+        <Button disabled={!dirty} onClick={() => { update(d => { d.db = structuredClone(db); }); setDirty(false); toast.success("Databases saved."); }}><Save className="mr-2 size-4" />Save changes</Button>
+      </footer>
     </div>
   );
 }
