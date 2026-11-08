@@ -37,6 +37,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { SeasonConfiguration } from "@/components/career/SeasonConfiguration";
+import { applyTeamStates, selectedPointsSystem } from "@/lib/career/configuration";
 import { DriverPreseason } from "@/components/career/DriverPreseason";
 import { ArrowLeft, ArrowRight, Check, Download, Plus, Upload, X } from "lucide-react";
 
@@ -139,7 +141,7 @@ function Preseason() {
 
       <div className="mt-8 space-y-5">
         {phase === 1 && (
-          <PhaseOne draft={draft} patch={patch} isFirstSeason={isFirstSeason} />
+          <PhaseOne draft={draft} patch={patch} isFirstSeason={isFirstSeason} seasonNumber={career.season} />
         )}
         {phase === 2 && <PhaseTwo draft={draft} patch={patch} isFirstSeason={isFirstSeason} />}
         {phase === 3 && (
@@ -168,6 +170,7 @@ function Preseason() {
         <Button variant="secondary" disabled={phase === 1} onClick={() => setPhase(phase - 1)}>
           Back
         </Button>
+        {phase === 1 && <Button variant="secondary" disabled={save.isPending} onClick={async () => { await persist(); toast.success("Databases saved. You can now confirm and proceed."); }}>Save changes</Button>}
         {phase < 4 ? (
           <Button
             onClick={async () => {
@@ -227,6 +230,7 @@ function startSeason(
   powerUnitId: string | null,
 ): CareerData {
   const next = structuredClone(data);
+  applyTeamStates(next.db, seasonNumber);
   const previous = next.seasons[next.seasons.length - 1];
 
   const driverTeams: Record<string, string> = {};
@@ -260,6 +264,7 @@ function startSeason(
   if (previous && previous.powerUnitId && previous.powerUnitId !== powerUnitId) next.development.powerUnit = 0;
 
   const season: SeasonRecord = {
+    pointsSystem: selectedPointsSystem(next.db),
     number: seasonNumber,
     calendar,
     results: [],
@@ -284,10 +289,12 @@ function PhaseOne({
   draft,
   patch,
   isFirstSeason,
+  seasonNumber,
 }: {
   draft: CareerData;
   patch: (fn: (d: CareerData) => void) => void;
   isFirstSeason: boolean;
+  seasonNumber: number;
 }) {
   const driverFields: Field<Driver>[] = [
     { key: "firstName", label: "Name" },
@@ -576,6 +583,8 @@ function PhaseOne({
       <ContractCostEditor draft={draft} patch={patch} />
 
       {isFirstSeason && <Season1Editor draft={draft} patch={patch} />}
+      <SeasonConfiguration db={draft.db} seasonNumber={seasonNumber} patch={fn => patch(d => fn(d.db))} />
+      <p className="text-sm text-muted-foreground">Save changes below, then confirm to proceed. Confirm also saves all current changes.</p>
     </div>
   );
 }

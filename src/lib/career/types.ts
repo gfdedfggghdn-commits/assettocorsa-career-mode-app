@@ -14,7 +14,9 @@ export type CareerMode = "myteam" | "driver";
 export type ContractSystem = "realistic" | "basic";
 export type DriverRole = 1 | 2;
 export type Academy = { id: string; name: string; colour: string; reputationDiscount: number };
-export type ReputationRules = { beatTeamMate: number; loseToTeamMate: number; beatObjective: number; missObjective: number };
+export type ReputationRules = { beatTeamMate: number; loseToTeamMate: number; beatObjective: number; missObjective: number; beatExpectation?: number; missExpectation?: number; beatAverage?: number; beatRival?: number; loseToRival?: number };
+export type PointsSystem = { id: string; name: string; points: number[] };
+export type TeamIdentity = { id: string; name: string; colour: string };
 export type ContractOffer = {
   id: string; teamId: string; role: DriverRole; replaceDriverId?: string;
   roundReceived: number; status: "pending" | "accepted" | "declined";
@@ -99,6 +101,10 @@ export type Team = {
   objectivePosition?: number;
   contractRequirement?: number;
   academyId?: string;
+  finishingExpectation?: number;
+  states?: TeamIdentity[];
+  /** Season number -> reusable identity id. */
+  seasonStates?: Record<string, string>;
 };
 
 export type PowerUnit = {
@@ -159,6 +165,8 @@ export type CareerDatabases = {
   academies?: Academy[];
   contractChance?: number;
   reputationRules?: ReputationRules;
+  pointsSystems?: PointsSystem[];
+  selectedPointsSystemId?: string;
 };
 
 export type Development = {
@@ -218,6 +226,8 @@ export type SeasonRecord = {
   driverRoles?: Record<string, DriverRole>;
   reputationFinalized?: boolean;
   h2hOffersFinalized?: boolean;
+  /** Frozen scoring for this season; missing means the legacy modern F1 table. */
+  pointsSystem?: PointsSystem;
 };
 
 export type CareerData = {

@@ -5,10 +5,12 @@ import { Label } from "@/components/ui/label";
 import { uid, driverName } from "@/lib/career/engine";
 import { clampChance, clampReputation } from "@/lib/career/driver";
 import type { Academy, CareerData, CareerDatabases, ReputationRules, Team } from "@/lib/career/types";
+import { DEFAULT_REPUTATION_RULES } from "@/lib/career/configuration";
 
 export function driverTeamFields(db: CareerDatabases, realistic: boolean): Field<Team>[] {
   return realistic ? [
     { key: "startingReputation", label: "Starting reputation", type: "number" },
+    { key: "finishingExpectation", label: "Race finishing expectation", type: "number" },
     { key: "objectivePosition", label: "Objective: finish Xth", type: "number" },
     { key: "contractRequirement", label: "Contract requirement", type: "number" },
     { key: "academyId", label: "Academy", type: "select", options: (db.academies ?? []).map(a => ({ value: a.id, label: a.name })) },
@@ -16,7 +18,7 @@ export function driverTeamFields(db: CareerDatabases, realistic: boolean): Field
 }
 
 export function DriverSettingsPanel({ data, db, patch }: { data: CareerData; db: CareerDatabases; patch: (fn: (d: CareerDatabases) => void) => void }) {
-  const rules = db.reputationRules ?? { beatTeamMate: 25, loseToTeamMate: 15, beatObjective: 100, missObjective: 75 };
+  const rules = { ...DEFAULT_REPUTATION_RULES, ...db.reputationRules };
   const realistic = data.driverCareer?.contractSystem !== "basic";
   return <div className="space-y-5">
     {realistic && <>
@@ -30,6 +32,9 @@ export function DriverSettingsPanel({ data, db, patch }: { data: CareerData; db:
         <h3 className="headline text-xl">Reputation</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           {([
+            ["beatExpectation", "Beat race finishing expectation (+)"], ["missExpectation", "Miss race finishing expectation (−)"],
+            ["beatAverage", "Beat previous average finish (+)"],
+            ["beatRival", "Beat rival (+)"], ["loseToRival", "Lose to rival (−)"],
             ["beatTeamMate", "Beat team mate (+)"], ["loseToTeamMate", "Lose to team mate (−)"],
             ["beatObjective", "Meet championship objective (+)"], ["missObjective", "Miss championship objective (−)"],
           ] as [keyof ReputationRules, string][]).map(([key, label]) => <div key={key} className="space-y-1">
