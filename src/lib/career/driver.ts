@@ -1,5 +1,6 @@
 import { currentSeason, driverPositionOf, driverStandings, midSeasonRound, pointsFor, uid } from "./engine";
 import { PLAYER_DRIVER_ID, type CareerData, type ContractOffer, type DriverRole, type SeasonRecord } from "./types";
+import { applyTeamStates, DEFAULT_REPUTATION_RULES, selectedPointsSystem } from "./configuration";
 
 export const isDriverCareer = (data: CareerData) => data.mode === "driver";
 export const isRealistic = (data: CareerData) => isDriverCareer(data) && data.driverCareer?.contractSystem !== "basic";
@@ -14,7 +15,7 @@ export function h2h(season: SeasonRecord, otherId: string | null | undefined, st
   for (const race of season.results.filter(r => r.round >= startRound)) {
     const a = race.positions[PLAYER_DRIVER_ID]; const b = race.positions[otherId];
     if (a == null || b == null) continue;
-    totals.points[0] += pointsFor(a); totals.points[1] += pointsFor(b);
+    totals.points[0] += pointsFor(a, season); totals.points[1] += pointsFor(b, season);
     if (a < b) totals.finishes[0]++; else if (b < a) totals.finishes[1]++;
     if (a <= 3) totals.podiums[0]++; if (b <= 3) totals.podiums[1]++;
   }
@@ -43,8 +44,20 @@ export function advanceDriverRace(data: CareerData, season: SeasonRecord, positi
   if (!driver) return;
   const realistic = isRealistic(data);
   const old = driver.reputation;
-  const rules = data.db.reputationRules ?? { beatTeamMate: 25, loseToTeamMate: 15, beatObjective: 100, missObjective: 75 };
+  const rules = { ...DEFAULT_REPUTATION_RULES, ...data.db.reputationRules };
   const a = positions[PLAYER_DRIVER_ID]; const b = season.teamMateId ? positions[season.teamMateId] : undefined;
+  if (realistic && a != null) {
+    const expectation = data.db.teams.find(t => t.id === season.playerTeamId)?.finishingExpectation;
+    if (expectation != null && a !== expectation)
+      driver.reputation = clampReputation(driver.reputation + (a < expectation ? rules.beatExpectation : -rules.missExpectation));
+    const current = season.results.find(r => r.positions === positions) ?? season.results.at(-1);
+    const previousFinishes = season.results.filter(r => r !== current && r.round < (current?.round ?? Infinity)).map(r => r.positions[PLAYER_DRIVER_ID]).filter((p): p is number => p != null);
+    if (previousFinishes.length && a < previousFinishes.reduce((sum, p) => sum + p, 0) / previousFinishes.length)
+      driver.reputation = clampReputation(driver.reputation + rules.beatAverage);
+    const rival = season.rivalId ? positions[season.rivalId] : undefined;
+    if (rival != null && a !== rival && (current?.round ?? 0) >= (season.rivalStartRound ?? 1))
+      driver.reputation = clampReputation(driver.reputation + (a < rival ? rules.beatRival : -rules.loseToRival));
+  }
   if (realistic && a != null && b != null && a !== b)
     driver.reputation = clampReputation(driver.reputation + (a < b ? rules.beatTeamMate : -rules.loseToTeamMate));
   const count = season.results.length; const half = midSeasonRound(season.calendar.length);
@@ -95,6 +108,7 @@ export function transferPlayer(data: CareerData, season: SeasonRecord, teamId: s
 }
 
 export function startDriverSeason(data: CareerData, number: number, calendar: string[], selectedTeam: string) {
+  applyTeamStates(data.db, number);
   const driver = data.driverCareer;
   if (!driver) throw new Error("Choose a driver career first.");
   const previous = currentSeason(data);
@@ -116,7 +130,7 @@ export function startDriverSeason(data: CareerData, number: number, calendar: st
   for (const t of data.db.teams) Object.keys(mapping).filter(id => mapping[id] === t.id).forEach((id, i) => { driverRoles[id] = id === PLAYER_DRIVER_ID ? role : (i === 0 ? 1 : 2); });
   const mate = Object.keys(mapping).find(id => id !== PLAYER_DRIVER_ID && mapping[id] === teamId) ?? null;
   if (mate) driverRoles[mate] = role === 1 ? 2 : 1;
-  const season: SeasonRecord = { number, calendar, results: [], driverTeams: mapping, playerTeamId: teamId, playerRole: role, driverRoles,
+  const season: SeasonRecord = { number, calendar, pointsSystem: selectedPointsSystem(data.db), results: [], driverTeams: mapping, playerTeamId: teamId, playerRole: role, driverRoles,
     objectivePosition: team.objectivePosition ?? 20, teamMateId: mate, majorSponsorId: null, minorSponsorIds: [], powerUnitId: team.powerUnitId,
     contractWindowMode: "END", midSeasonWindowUsed: false, completed: false, majorObjectiveMet: null, offers: [], rivalId: null, teamMateStartRound: 1 };
   data.seasons.push(season);

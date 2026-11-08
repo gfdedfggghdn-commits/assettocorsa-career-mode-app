@@ -14,6 +14,7 @@ import {
   type SeasonRecord,
   type SeasonSnapshot,
 } from "./types";
+import { teamIdentity } from "./configuration";
 
 export const money = (n: number) =>
   (n < 0 ? "-" : "") +
@@ -37,7 +38,7 @@ export function driverCost(db: CareerDatabases, d: Driver): number {
   return Math.round((skill + (d.f1Years || 0) * F1_YEAR_BONUS) / 1000) * 1000;
 }
 
-export const pointsFor = (position: number) => POINTS[position - 1] ?? 0;
+export const pointsFor = (position: number, season?: SeasonRecord) => (season?.pointsSystem?.points ?? POINTS)[position - 1] ?? 0;
 
 export const currentSeason = (data: CareerData): SeasonRecord | undefined =>
   data.seasons[data.seasons.length - 1];
@@ -87,7 +88,7 @@ export function captureSnapshot(data: CareerData, season: SeasonRecord) {
   snap.teams[PLAYER_TEAM_ID] = { name: data.team.name || "My Team", colour: data.team.colour || "#e10600" };
   for (const t of data.db.teams) {
     if (used.has(t.id)) {
-      snap.teams[t.id] = { name: t.name, colour: t.colour };
+      snap.teams[t.id] = teamIdentity(t, season.number);
     }
   }
   for (const trackId of season.calendar) {
@@ -123,7 +124,7 @@ export function seasonTeamInfo(
   if (frozen) return { name: frozen.name, colour: frozen.colour };
   if (teamId === PLAYER_TEAM_ID) return { name: data.team.name || "My Team", colour: data.team.colour || "#e10600" };
   const live = data.db.teams.find((t) => t.id === teamId);
-  if (live) return { name: live.name, colour: live.colour };
+  if (live) return teamIdentity(live, season.number);
   const snap = season.snapshot?.teams[teamId];
   if (snap) return { name: snap.name, colour: snap.colour };
   return { name: "Former team", colour: "#888888" };
@@ -256,7 +257,7 @@ export function driverStandings(data: CareerData, season: SeasonRecord): Standin
       const pos = race.positions[id];
       if (pos != null) {
         cells[race.round - 1] = pos;
-        total += pointsFor(pos);
+        total += pointsFor(pos, season);
         if (pos >= 1 && pos <= COUNTBACK_DEPTH) posCounts[pos - 1] = (posCounts[pos - 1] ?? 0) + 1;
         raced = true;
       }
@@ -315,7 +316,7 @@ export function constructorStandings(data: CareerData, season: SeasonRecord): St
       let scored = false;
       for (const [driverId, pos] of Object.entries(race.positions)) {
         if (resultTeamOf(season, race, driverId) === teamId) {
-          pts += pointsFor(pos);
+          pts += pointsFor(pos, season);
           scored = true;
           if (pos >= 1 && pos <= COUNTBACK_DEPTH) posCounts[pos - 1] = (posCounts[pos - 1] ?? 0) + 1;
         }
@@ -397,7 +398,7 @@ export function evaluateMinorSponsors(
     } else if (type === "TEAM_POINTS") {
       const pts = Object.entries(positions)
         .filter(([d]) => driverTeamOf(season, d) === PLAYER_TEAM_ID)
-        .reduce((sum, [, p]) => sum + pointsFor(p), 0);
+        .reduce((sum, [, p]) => sum + pointsFor(p, season), 0);
       met = pts >= (s.objectivePoints ?? 1);
     }
     out.push({
@@ -431,7 +432,7 @@ export function teamPointFinishes(season: SeasonRecord): number {
   let n = 0;
   for (const r of season.results)
     for (const [id, pos] of Object.entries(r.positions))
-      if (pos <= 10 && resultTeamOf(season, r, id) === PLAYER_TEAM_ID) n++;
+      if (pointsFor(pos, season) > 0 && resultTeamOf(season, r, id) === PLAYER_TEAM_ID) n++;
   return n;
 }
 
