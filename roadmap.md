@@ -1,5 +1,12 @@
 # Roadmap — Driver career mode
 
+## Current improvements
+- [ ] Season-frozen custom points and presets in both modes
+- [ ] Reusable team states assigned by season in both modes
+- [ ] Expanded driver reputation and manual debug
+- [ ] Bottom save controls, unsaved warning and overflow indicators
+- [ ] Rule tests and signed-in flow verification
+
 - [ ] Types: career mode (myteam/driver), contract system (realistic/basic), academies db, contract chance db, team fields (starting reputation, objective, contract requirement, academy), driver-career data (reputation, rival, offers, team rolls)
 - [ ] Career creation: choose MyTeam vs Driver career, then contract offer system
 - [ ] Engine: player team mapping per season, H2H stats, reputation, offer scheduling
