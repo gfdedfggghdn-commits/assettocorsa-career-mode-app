@@ -7,7 +7,7 @@ export const POINTS_PRESETS: PointsSystem[] = [
 ];
 
 export function selectedPointsSystem(db: CareerDatabases): PointsSystem {
-  return structuredClone((db.pointsSystems ?? POINTS_PRESETS).find(s => s.id === db.selectedPointsSystemId) ?? POINTS_PRESETS[0]);
+  return structuredClone((db.pointsSystems ?? POINTS_PRESETS).find(s => s.id === db.selectedPointsSystemId) ?? { id: "modern-f1", name: "Modern F1 (race finish)", points: [...POINTS] });
 }
 
 export function teamIdentity(team: Team, seasonNumber: number) {
