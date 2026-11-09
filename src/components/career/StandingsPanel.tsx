@@ -27,6 +27,7 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
   const [editing, setEditing] = useState<StandingRow | null>(null);
   const [transferTeam, setTransferTeam] = useState<string | null>(null);
   const [w, setW] = useState<Widths>(DEFAULT_W);
+  const [panelW, setPanelW] = useState<number | null>(null);
   const season = seasons[Math.min(index, seasons.length - 1)];
 
   if (!season) return <p className="text-sm text-muted-foreground">No season has started yet.</p>;
@@ -55,7 +56,7 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
         ) : (
           <span />
         )}
-        <span className="text-xs text-muted-foreground">Drag a column edge in the header to resize it.</span>
+        <span className="text-xs text-muted-foreground">Drag a column edge to resize it, or drag the bar on the right to make the whole table bigger.</span>
         <div className="flex gap-1 rounded-md bg-surface-2 p-1">
           {(["drivers", "constructors"] as const).map((v) => (
             <button
@@ -69,11 +70,28 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
         </div>
       </div>
 
-      {view === "drivers" ? (
-        <DriverTable w={w} setW={setW} data={data} season={season} onPick={canEdit ? setEditing : undefined} />
-      ) : (
-        <ConstructorTable w={w} setW={setW} data={data} season={season} />
-      )}
+      <div className="relative pr-3" style={panelW ? { width: panelW } : undefined}>
+        {view === "drivers" ? (
+          <DriverTable w={w} setW={setW} data={data} season={season} onPick={canEdit ? setEditing : undefined} />
+        ) : (
+          <ConstructorTable w={w} setW={setW} data={data} season={season} />
+        )}
+        <span
+          role="separator"
+          aria-label="Resize whole table"
+          title="Drag to make the whole table bigger"
+          className="absolute right-0 top-0 h-full w-3 cursor-col-resize rounded bg-border/60 hover:bg-primary/60"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const start = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect().width;
+            const move = (ev: PointerEvent) => setPanelW(Math.max(320, start + ev.clientX - startX));
+            const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+            window.addEventListener("pointermove", move);
+            window.addEventListener("pointerup", up);
+          }}
+        />
+      </div>
       {canEdit && view === "drivers" && (
         <p className="text-xs text-muted-foreground">Click a driver to change the team they race for.</p>
       )}
