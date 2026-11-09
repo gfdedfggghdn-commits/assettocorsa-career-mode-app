@@ -190,7 +190,7 @@ function DriverTable({
             return (
               <tr
                 key={r.id}
-                className={`border-t border-border/60 ${clickable ? "cursor-pointer hover:bg-surface-2" : ""} ${
+                className={`[&>td]:border-t [&>td]:border-border/60 ${clickable ? "cursor-pointer hover:bg-surface-2" : ""} ${
                   r.id === PLAYER_DRIVER_ID ? "bg-primary/10" : ""
                 }`}
                 onClick={() => { if (clickable && onPick) onPick(r); }}
@@ -243,7 +243,7 @@ function ConstructorTable({ data, season, cellW }: { data: CareerData; season: S
         </thead>
         <tbody>
           {rows.map((r, rank) => (
-            <tr key={r.id} className="border-t border-border/60">
+            <tr key={r.id} className="[&>td]:border-t [&>td]:border-border/60">
               <td className="sticky z-10 bg-surface left-0 w-10 min-w-10 px-2 py-1 text-right font-mono text-muted-foreground">{rank + 1}</td>
               <td className="sticky z-10 bg-surface left-10 w-52 min-w-52 max-w-52 truncate whitespace-nowrap border-r border-border px-3 py-1">
                 <span className="flex items-center gap-2">
