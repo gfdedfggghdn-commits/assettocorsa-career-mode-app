@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import {
   constructorStandings,
   driverStandings,
@@ -26,7 +26,7 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
   const [view, setView] = useState<"drivers" | "constructors">("drivers");
   const [editing, setEditing] = useState<StandingRow | null>(null);
   const [transferTeam, setTransferTeam] = useState<string | null>(null);
-  const [cellW, setCellW] = useState(32);
+  const [w, setW] = useState<Widths>(DEFAULT_W);
   const season = seasons[Math.min(index, seasons.length - 1)];
 
   if (!season) return <p className="text-sm text-muted-foreground">No season has started yet.</p>;
@@ -55,10 +55,7 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
         ) : (
           <span />
         )}
-        <label className="flex items-center gap-2 label-caps">
-          Race column width
-          <input type="range" min={18} max={60} value={cellW} onChange={(e) => setCellW(Number(e.target.value))} className="w-32 accent-[var(--primary)]" />
-        </label>
+        <span className="text-xs text-muted-foreground">Drag a column edge in the header to resize it.</span>
         <div className="flex gap-1 rounded-md bg-surface-2 p-1">
           {(["drivers", "constructors"] as const).map((v) => (
             <button
@@ -73,9 +70,9 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
       </div>
 
       {view === "drivers" ? (
-        <DriverTable cellW={cellW} data={data} season={season} onPick={canEdit ? setEditing : undefined} />
+        <DriverTable w={w} setW={setW} data={data} season={season} onPick={canEdit ? setEditing : undefined} />
       ) : (
-        <ConstructorTable cellW={cellW} data={data} season={season} />
+        <ConstructorTable w={w} setW={setW} data={data} season={season} />
       )}
       {canEdit && view === "drivers" && (
         <p className="text-xs text-muted-foreground">Click a driver to change the team they race for.</p>
@@ -132,18 +129,52 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
   );
 }
 
-function RoundHeaders({ data, season, cellW }: { data: CareerData; season: SeasonRecord; cellW: number }) {
+type Widths = { rank: number; driver: number; team: number; race: number; pts: number; gap: number };
+const DEFAULT_W: Widths = { rank: 40, driver: 180, team: 170, race: 34, pts: 60, gap: 60 };
+type WProps = { w: Widths; setW: Dispatch<SetStateAction<Widths>> };
+
+function ResizeHandle({ k, w, setW, invert }: WProps & { k: keyof Widths; invert?: boolean }) {
+  return (
+    <span
+      role="separator"
+      aria-label={`Resize ${k} column`}
+      className={`absolute top-0 z-20 h-full w-2 cursor-col-resize hover:bg-primary/50 ${invert ? "left-0" : "right-0"}`}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const startX = e.clientX;
+        const start = w[k];
+        const move = (ev: PointerEvent) => {
+          const dx = (ev.clientX - startX) * (invert ? -1 : 1);
+          setW((p) => ({ ...p, [k]: Math.max(16, start + dx) }));
+        };
+        const up = () => {
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", up);
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+      }}
+    />
+  );
+}
+
+const box = (width: number) => ({ width, minWidth: width, maxWidth: width });
+const STICKY = "sticky z-10 bg-surface overflow-hidden";
+
+function RoundHeaders({ data, season, w, setW }: { data: CareerData; season: SeasonRecord } & WProps) {
   return (
     <>
       {season.calendar.map((id, i) => {
         const t = seasonTrackInfo(data, season, id);
         const code = countryCode(t.country);
         return (
-          <th key={i} style={{ minWidth: cellW, width: cellW }} className="px-0 py-2 text-center" title={`R${i + 1} ${t.country}`}>
+          <th key={i} style={box(w.race)} className="relative px-0 py-2 text-center" title={`R${i + 1} ${t.country}`}>
             <span className="flex flex-col items-center gap-0.5">
               <Flag nationality={t.country} />
               <span className="font-mono text-[10px] text-muted-foreground">{code ?? `R${i + 1}`}</span>
             </span>
+            <ResizeHandle k="race" w={w} setW={setW} />
           </th>
         );
       })}
@@ -158,30 +189,25 @@ function cellClass(pos: number | null) {
   return "";
 }
 
-function DriverTable({
-  data,
-  season,
-  onPick,
-  cellW,
-}: {
-  cellW: number;
-  data: CareerData;
-  season: SeasonRecord;
-  onPick?: ((r: StandingRow) => void) | undefined;
-}) {
+function Stripe({ colour }: { colour: string }) {
+  return <span className="h-4 w-1 shrink-0 rounded-sm" style={{ background: colour }} aria-hidden />;
+}
+
+function DriverTable({ data, season, onPick, w, setW }: { data: CareerData; season: SeasonRecord; onPick?: ((r: StandingRow) => void) | undefined } & WProps) {
   const rows = driverStandings(data, season);
   const leader = rows[0]?.total ?? 0;
+  const L1 = w.rank, L2 = w.rank + w.driver;
   return (
     <div className="panel overflow-x-auto">
-      <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+      <table className="table-fixed border-separate border-spacing-0 text-sm" style={{ width: w.rank + w.driver + w.team + w.race * season.calendar.length + w.pts + w.gap }}>
         <thead>
           <tr>
-            <th className="label-caps sticky z-10 bg-surface left-0 w-10 min-w-10 px-2 py-2 text-right">#</th>
-            <th className="label-caps sticky z-10 bg-surface left-10 w-44 min-w-44 px-3 py-2 text-left">Driver</th>
-            <th className="label-caps sticky z-10 bg-surface left-54 w-40 min-w-40 border-r border-border px-3 py-2 text-left">Team</th>
-            <RoundHeaders cellW={cellW} data={data} season={season} />
-            <th className="label-caps sticky z-10 bg-surface right-16 w-16 min-w-16 border-l border-border px-3 py-2 text-right">Pts</th>
-            <th className="label-caps sticky z-10 bg-surface right-0 w-16 min-w-16 px-3 py-2 text-right">Gap</th>
+            <th style={{ ...box(w.rank), left: 0 }} className={`label-caps relative ${STICKY} px-2 py-2 text-right`}>#<ResizeHandle k="rank" w={w} setW={setW} /></th>
+            <th style={{ ...box(w.driver), left: L1 }} className={`label-caps relative ${STICKY} px-3 py-2 text-left`}>Driver<ResizeHandle k="driver" w={w} setW={setW} /></th>
+            <th style={{ ...box(w.team), left: L2 }} className={`label-caps relative ${STICKY} border-r border-border px-3 py-2 text-left`}>Team<ResizeHandle k="team" w={w} setW={setW} /></th>
+            <RoundHeaders data={data} season={season} w={w} setW={setW} />
+            <th style={{ ...box(w.pts), right: w.gap }} className={`label-caps relative ${STICKY} border-l border-border px-3 py-2 text-right`}><ResizeHandle k="pts" w={w} setW={setW} invert />Pts</th>
+            <th style={{ ...box(w.gap), right: 0 }} className={`label-caps relative ${STICKY} px-3 py-2 text-right`}><ResizeHandle k="gap" w={w} setW={setW} invert />Gap</th>
           </tr>
         </thead>
         <tbody>
@@ -190,33 +216,21 @@ function DriverTable({
             return (
               <tr
                 key={r.id}
-                className={`[&>td]:border-t [&>td]:border-border/60 ${clickable ? "cursor-pointer hover:bg-surface-2" : ""} ${
-                  r.id === PLAYER_DRIVER_ID ? "bg-primary/10" : ""
-                }`}
+                className={`[&>td]:border-t [&>td]:border-border/60 ${clickable ? "cursor-pointer hover:bg-surface-2" : ""} ${r.id === PLAYER_DRIVER_ID ? "bg-primary/10" : ""}`}
                 onClick={() => { if (clickable && onPick) onPick(r); }}
               >
-                <td className="sticky z-10 bg-surface left-0 w-10 min-w-10 px-2 py-1 text-right font-mono text-muted-foreground">{rank + 1}</td>
-                <td className="sticky z-10 bg-surface left-10 w-44 min-w-44 max-w-44 truncate whitespace-nowrap px-3 py-1">
-                  <span className="flex items-center gap-2">
-                    <Flag nationality={r.nationality} />
-                    {r.label}
-                  </span>
+                <td style={{ ...box(w.rank), left: 0 }} className={`${STICKY} px-2 py-1 text-right font-mono text-muted-foreground`}>{rank + 1}</td>
+                <td style={{ ...box(w.driver), left: L1 }} className={`${STICKY} whitespace-nowrap px-3 py-1`}>
+                  <span className="flex items-center gap-2 overflow-hidden"><Flag nationality={r.nationality} /><span className="truncate">{r.label}</span></span>
                 </td>
-                <td className="sticky z-10 bg-surface left-54 w-40 min-w-40 max-w-40 truncate whitespace-nowrap border-r border-border px-3 py-1">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <span className="h-4 w-1 rounded-sm" style={{ background: r.colour }} aria-hidden />
-                    {r.teamName}
-                  </span>
+                <td style={{ ...box(w.team), left: L2 }} className={`${STICKY} whitespace-nowrap border-r border-border px-3 py-1`}>
+                  <span className="flex items-center gap-2 overflow-hidden text-muted-foreground"><Stripe colour={r.colour} /><span className="truncate">{r.teamName}</span></span>
                 </td>
                 {r.cells.map((c, i) => (
-                  <td key={i} style={{ minWidth: cellW, width: cellW }} className={`px-0 py-1 text-center font-mono ${cellClass(c)}`}>
-                    {c ?? ""}
-                  </td>
+                  <td key={i} style={box(w.race)} className={`overflow-hidden px-0 py-1 text-center font-mono ${cellClass(c)}`}>{c ?? ""}</td>
                 ))}
-                <td className="sticky z-10 bg-surface right-16 w-16 min-w-16 border-l border-border px-3 py-1 text-right font-mono font-bold">{r.total}</td>
-                <td className="sticky z-10 bg-surface right-0 w-16 min-w-16 px-3 py-1 text-right font-mono text-muted-foreground">
-                  {rank === 0 ? "—" : r.total - leader}
-                </td>
+                <td style={{ ...box(w.pts), right: w.gap }} className={`${STICKY} border-l border-border px-3 py-1 text-right font-mono font-bold`}>{r.total}</td>
+                <td style={{ ...box(w.gap), right: 0 }} className={`${STICKY} px-3 py-1 text-right font-mono text-muted-foreground`}>{rank === 0 ? "—" : r.total - leader}</td>
               </tr>
             );
           })}
@@ -226,41 +240,34 @@ function DriverTable({
   );
 }
 
-function ConstructorTable({ data, season, cellW }: { data: CareerData; season: SeasonRecord; cellW: number }) {
+function ConstructorTable({ data, season, w, setW }: { data: CareerData; season: SeasonRecord } & WProps) {
   const rows = constructorStandings(data, season);
   const leader = rows[0]?.total ?? 0;
+  const teamW = w.driver + w.team;
   return (
     <div className="panel overflow-x-auto">
-      <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+      <table className="table-fixed border-separate border-spacing-0 text-sm" style={{ width: w.rank + teamW + w.race * season.calendar.length + w.pts + w.gap }}>
         <thead>
           <tr>
-            <th className="label-caps sticky z-10 bg-surface left-0 w-10 min-w-10 px-2 py-2 text-right">#</th>
-            <th className="label-caps sticky z-10 bg-surface left-10 w-52 min-w-52 border-r border-border px-3 py-2 text-left">Team</th>
-            <RoundHeaders cellW={cellW} data={data} season={season} />
-            <th className="label-caps sticky z-10 bg-surface right-16 w-16 min-w-16 border-l border-border px-3 py-2 text-right">Pts</th>
-            <th className="label-caps sticky z-10 bg-surface right-0 w-16 min-w-16 px-3 py-2 text-right">Gap</th>
+            <th style={{ ...box(w.rank), left: 0 }} className={`label-caps relative ${STICKY} px-2 py-2 text-right`}>#<ResizeHandle k="rank" w={w} setW={setW} /></th>
+            <th style={{ ...box(teamW), left: w.rank }} className={`label-caps relative ${STICKY} border-r border-border px-3 py-2 text-left`}>Team<ResizeHandle k="team" w={w} setW={setW} /></th>
+            <RoundHeaders data={data} season={season} w={w} setW={setW} />
+            <th style={{ ...box(w.pts), right: w.gap }} className={`label-caps relative ${STICKY} border-l border-border px-3 py-2 text-right`}><ResizeHandle k="pts" w={w} setW={setW} invert />Pts</th>
+            <th style={{ ...box(w.gap), right: 0 }} className={`label-caps relative ${STICKY} px-3 py-2 text-right`}><ResizeHandle k="gap" w={w} setW={setW} invert />Gap</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, rank) => (
             <tr key={r.id} className="[&>td]:border-t [&>td]:border-border/60">
-              <td className="sticky z-10 bg-surface left-0 w-10 min-w-10 px-2 py-1 text-right font-mono text-muted-foreground">{rank + 1}</td>
-              <td className="sticky z-10 bg-surface left-10 w-52 min-w-52 max-w-52 truncate whitespace-nowrap border-r border-border px-3 py-1">
-                <span className="flex items-center gap-2">
-                  <Flag nationality={r.nationality} />
-                  <span className="h-4 w-1 rounded-sm" style={{ background: r.colour }} aria-hidden />
-                  {r.label}
-                </span>
+              <td style={{ ...box(w.rank), left: 0 }} className={`${STICKY} px-2 py-1 text-right font-mono text-muted-foreground`}>{rank + 1}</td>
+              <td style={{ ...box(teamW), left: w.rank }} className={`${STICKY} whitespace-nowrap border-r border-border px-3 py-1`}>
+                <span className="flex items-center gap-2 overflow-hidden"><Flag nationality={r.nationality} /><Stripe colour={r.colour} /><span className="truncate">{r.label}</span></span>
               </td>
               {r.cells.map((c, i) => (
-                <td key={i} style={{ minWidth: cellW, width: cellW }} className="px-0 py-1 text-center font-mono">
-                  {c ?? ""}
-                </td>
+                <td key={i} style={box(w.race)} className="overflow-hidden px-0 py-1 text-center font-mono">{c ?? ""}</td>
               ))}
-              <td className="sticky z-10 bg-surface right-16 w-16 min-w-16 border-l border-border px-3 py-1 text-right font-mono font-bold">{r.total}</td>
-              <td className="sticky z-10 bg-surface right-0 w-16 min-w-16 px-3 py-1 text-right font-mono text-muted-foreground">
-                {rank === 0 ? "—" : r.total - leader}
-              </td>
+              <td style={{ ...box(w.pts), right: w.gap }} className={`${STICKY} border-l border-border px-3 py-1 text-right font-mono font-bold`}>{r.total}</td>
+              <td style={{ ...box(w.gap), right: 0 }} className={`${STICKY} px-3 py-1 text-right font-mono text-muted-foreground`}>{rank === 0 ? "—" : r.total - leader}</td>
             </tr>
           ))}
         </tbody>
