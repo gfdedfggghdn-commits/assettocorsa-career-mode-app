@@ -26,6 +26,7 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
   const [view, setView] = useState<"drivers" | "constructors">("drivers");
   const [editing, setEditing] = useState<StandingRow | null>(null);
   const [transferTeam, setTransferTeam] = useState<string | null>(null);
+  const [cellW, setCellW] = useState(32);
   const season = seasons[Math.min(index, seasons.length - 1)];
 
   if (!season) return <p className="text-sm text-muted-foreground">No season has started yet.</p>;
@@ -54,6 +55,10 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
         ) : (
           <span />
         )}
+        <label className="flex items-center gap-2 label-caps">
+          Race column width
+          <input type="range" min={18} max={60} value={cellW} onChange={(e) => setCellW(Number(e.target.value))} className="w-32 accent-[var(--primary)]" />
+        </label>
         <div className="flex gap-1 rounded-md bg-surface-2 p-1">
           {(["drivers", "constructors"] as const).map((v) => (
             <button
@@ -68,9 +73,9 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
       </div>
 
       {view === "drivers" ? (
-        <DriverTable data={data} season={season} onPick={canEdit ? setEditing : undefined} />
+        <DriverTable cellW={cellW} data={data} season={season} onPick={canEdit ? setEditing : undefined} />
       ) : (
-        <ConstructorTable data={data} season={season} />
+        <ConstructorTable cellW={cellW} data={data} season={season} />
       )}
       {canEdit && view === "drivers" && (
         <p className="text-xs text-muted-foreground">Click a driver to change the team they race for.</p>
@@ -127,14 +132,14 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
   );
 }
 
-function RoundHeaders({ data, season }: { data: CareerData; season: SeasonRecord }) {
+function RoundHeaders({ data, season, cellW }: { data: CareerData; season: SeasonRecord; cellW: number }) {
   return (
     <>
       {season.calendar.map((id, i) => {
         const t = seasonTrackInfo(data, season, id);
         const code = countryCode(t.country);
         return (
-          <th key={i} className="px-1 py-2 text-center" title={`R${i + 1} ${t.country}`}>
+          <th key={i} style={{ minWidth: cellW, width: cellW }} className="px-0 py-2 text-center" title={`R${i + 1} ${t.country}`}>
             <span className="flex flex-col items-center gap-0.5">
               <Flag nationality={t.country} />
               <span className="font-mono text-[10px] text-muted-foreground">{code ?? `R${i + 1}`}</span>
@@ -157,7 +162,9 @@ function DriverTable({
   data,
   season,
   onPick,
+  cellW,
 }: {
+  cellW: number;
   data: CareerData;
   season: SeasonRecord;
   onPick?: ((r: StandingRow) => void) | undefined;
@@ -166,15 +173,15 @@ function DriverTable({
   const leader = rows[0]?.total ?? 0;
   return (
     <div className="panel overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
-            <th className="label-caps px-2 py-2 text-right">#</th>
-            <th className="label-caps sticky left-0 z-10 bg-surface-1 px-3 py-2 text-left">Driver</th>
-            <th className="label-caps px-3 py-2 text-left">Team</th>
-            <RoundHeaders data={data} season={season} />
-            <th className="label-caps px-3 py-2 text-right">Pts</th>
-            <th className="label-caps px-3 py-2 text-right">Gap</th>
+            <th className="label-caps sticky z-10 bg-surface left-0 w-10 min-w-10 px-2 py-2 text-right">#</th>
+            <th className="label-caps sticky z-10 bg-surface left-10 w-44 min-w-44 px-3 py-2 text-left">Driver</th>
+            <th className="label-caps sticky z-10 bg-surface left-54 w-40 min-w-40 border-r border-border px-3 py-2 text-left">Team</th>
+            <RoundHeaders cellW={cellW} data={data} season={season} />
+            <th className="label-caps sticky z-10 bg-surface right-16 w-16 min-w-16 border-l border-border px-3 py-2 text-right">Pts</th>
+            <th className="label-caps sticky z-10 bg-surface right-0 w-16 min-w-16 px-3 py-2 text-right">Gap</th>
           </tr>
         </thead>
         <tbody>
@@ -183,31 +190,31 @@ function DriverTable({
             return (
               <tr
                 key={r.id}
-                className={`border-t border-border/60 ${clickable ? "cursor-pointer hover:bg-surface-2" : ""} ${
+                className={`[&>td]:border-t [&>td]:border-border/60 ${clickable ? "cursor-pointer hover:bg-surface-2" : ""} ${
                   r.id === PLAYER_DRIVER_ID ? "bg-primary/10" : ""
                 }`}
                 onClick={() => { if (clickable && onPick) onPick(r); }}
               >
-                <td className="px-2 py-1 text-right font-mono text-muted-foreground">{rank + 1}</td>
-                <td className="sticky left-0 z-10 whitespace-nowrap bg-surface-1 px-3 py-1">
+                <td className="sticky z-10 bg-surface left-0 w-10 min-w-10 px-2 py-1 text-right font-mono text-muted-foreground">{rank + 1}</td>
+                <td className="sticky z-10 bg-surface left-10 w-44 min-w-44 max-w-44 truncate whitespace-nowrap px-3 py-1">
                   <span className="flex items-center gap-2">
                     <Flag nationality={r.nationality} />
                     {r.label}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-3 py-1">
+                <td className="sticky z-10 bg-surface left-54 w-40 min-w-40 max-w-40 truncate whitespace-nowrap border-r border-border px-3 py-1">
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <span className="h-4 w-1 rounded-sm" style={{ background: r.colour }} aria-hidden />
                     {r.teamName}
                   </span>
                 </td>
                 {r.cells.map((c, i) => (
-                  <td key={i} className={`px-1 py-1 text-center font-mono ${cellClass(c)}`}>
+                  <td key={i} style={{ minWidth: cellW, width: cellW }} className={`px-0 py-1 text-center font-mono ${cellClass(c)}`}>
                     {c ?? ""}
                   </td>
                 ))}
-                <td className="px-3 py-1 text-right font-mono font-bold">{r.total}</td>
-                <td className="px-3 py-1 text-right font-mono text-muted-foreground">
+                <td className="sticky z-10 bg-surface right-16 w-16 min-w-16 border-l border-border px-3 py-1 text-right font-mono font-bold">{r.total}</td>
+                <td className="sticky z-10 bg-surface right-0 w-16 min-w-16 px-3 py-1 text-right font-mono text-muted-foreground">
                   {rank === 0 ? "—" : r.total - leader}
                 </td>
               </tr>
@@ -219,26 +226,26 @@ function DriverTable({
   );
 }
 
-function ConstructorTable({ data, season }: { data: CareerData; season: SeasonRecord }) {
+function ConstructorTable({ data, season, cellW }: { data: CareerData; season: SeasonRecord; cellW: number }) {
   const rows = constructorStandings(data, season);
   const leader = rows[0]?.total ?? 0;
   return (
     <div className="panel overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
         <thead>
           <tr>
-            <th className="label-caps px-2 py-2 text-right">#</th>
-            <th className="label-caps px-3 py-2 text-left">Team</th>
-            <RoundHeaders data={data} season={season} />
-            <th className="label-caps px-3 py-2 text-right">Pts</th>
-            <th className="label-caps px-3 py-2 text-right">Gap</th>
+            <th className="label-caps sticky z-10 bg-surface left-0 w-10 min-w-10 px-2 py-2 text-right">#</th>
+            <th className="label-caps sticky z-10 bg-surface left-10 w-52 min-w-52 border-r border-border px-3 py-2 text-left">Team</th>
+            <RoundHeaders cellW={cellW} data={data} season={season} />
+            <th className="label-caps sticky z-10 bg-surface right-16 w-16 min-w-16 border-l border-border px-3 py-2 text-right">Pts</th>
+            <th className="label-caps sticky z-10 bg-surface right-0 w-16 min-w-16 px-3 py-2 text-right">Gap</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, rank) => (
-            <tr key={r.id} className="border-t border-border/60">
-              <td className="px-2 py-1 text-right font-mono text-muted-foreground">{rank + 1}</td>
-              <td className="whitespace-nowrap px-3 py-1">
+            <tr key={r.id} className="[&>td]:border-t [&>td]:border-border/60">
+              <td className="sticky z-10 bg-surface left-0 w-10 min-w-10 px-2 py-1 text-right font-mono text-muted-foreground">{rank + 1}</td>
+              <td className="sticky z-10 bg-surface left-10 w-52 min-w-52 max-w-52 truncate whitespace-nowrap border-r border-border px-3 py-1">
                 <span className="flex items-center gap-2">
                   <Flag nationality={r.nationality} />
                   <span className="h-4 w-1 rounded-sm" style={{ background: r.colour }} aria-hidden />
@@ -246,12 +253,12 @@ function ConstructorTable({ data, season }: { data: CareerData; season: SeasonRe
                 </span>
               </td>
               {r.cells.map((c, i) => (
-                <td key={i} className="px-1 py-1 text-center font-mono">
+                <td key={i} style={{ minWidth: cellW, width: cellW }} className="px-0 py-1 text-center font-mono">
                   {c ?? ""}
                 </td>
               ))}
-              <td className="px-3 py-1 text-right font-mono font-bold">{r.total}</td>
-              <td className="px-3 py-1 text-right font-mono text-muted-foreground">
+              <td className="sticky z-10 bg-surface right-16 w-16 min-w-16 border-l border-border px-3 py-1 text-right font-mono font-bold">{r.total}</td>
+              <td className="sticky z-10 bg-surface right-0 w-16 min-w-16 px-3 py-1 text-right font-mono text-muted-foreground">
                 {rank === 0 ? "—" : r.total - leader}
               </td>
             </tr>
