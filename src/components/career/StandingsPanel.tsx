@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import {
   constructorStandings,
   driverStandings,
@@ -26,9 +26,22 @@ export function StandingsPanel({ data, update, seasonIndex }: Props) {
   const [view, setView] = useState<"drivers" | "constructors">("drivers");
   const [editing, setEditing] = useState<StandingRow | null>(null);
   const [transferTeam, setTransferTeam] = useState<string | null>(null);
-  const [w, setW] = useState<Widths>(DEFAULT_W);
-  const [panelW, setPanelW] = useState<number | null>(null);
   const season = seasons[Math.min(index, seasons.length - 1)];
+  const layoutKey = season ? `standings-layout:${season.number}:${season.calendar.join(",")}` : "";
+  const [layout, setLayout] = useState<{ key: string; w: Widths; panelW: number | null }>({ key: "", w: DEFAULT_W, panelW: null });
+  useEffect(() => {
+    if (!layoutKey) return;
+    let saved: { w?: Widths; panelW?: number | null } = {};
+    try { saved = JSON.parse(localStorage.getItem(layoutKey) ?? "{}"); } catch { /* ignore */ }
+    setLayout({ key: layoutKey, w: { ...DEFAULT_W, ...saved.w }, panelW: saved.panelW ?? null });
+  }, [layoutKey]);
+  useEffect(() => {
+    if (layout.key && layout.key === layoutKey) localStorage.setItem(layout.key, JSON.stringify({ w: layout.w, panelW: layout.panelW }));
+  }, [layout, layoutKey]);
+  const w = layout.key === layoutKey ? layout.w : DEFAULT_W;
+  const panelW = layout.key === layoutKey ? layout.panelW : null;
+  const setW: Dispatch<SetStateAction<Widths>> = (v) => setLayout((l) => ({ ...l, w: typeof v === "function" ? v(l.w) : v }));
+  const setPanelW = (v: number | null) => setLayout((l) => ({ ...l, panelW: v }));
 
   if (!season) return <p className="text-sm text-muted-foreground">No season has started yet.</p>;
 
