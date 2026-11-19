@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useCareers, useCreateCareer, useDeleteCareer } from "@/lib/career/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { seasonTeamInfo } from "@/lib/career/engine";
+import type { CareerData } from "@/lib/career/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trash2, Plus, LogOut } from "lucide-react";
@@ -40,7 +41,6 @@ function CareersPage() {
   const remove = useDeleteCareer();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [name, setName] = useState("");
   const [mode, setMode] = useState<"myteam" | "driver">("myteam");
   const [contractSystem, setContractSystem] = useState<"realistic" | "basic">("realistic");
 
@@ -52,11 +52,7 @@ function CareersPage() {
   }
 
   async function startNew() {
-    if (!name.trim()) {
-      toast.error("Give your career a name first.");
-      return;
-    }
-    const id = await create.mutateAsync({ name: name.trim(), mode, contractSystem });
+    const id = await create.mutateAsync({ name: mode === "driver" ? "Driver Career" : "MyTeam", mode, contractSystem });
     navigate({ to: "/careers/$careerId/preseason", params: { careerId: id } });
   }
 
@@ -80,12 +76,6 @@ function CareersPage() {
           {(["realistic", "basic"] as const).map(value => <Button key={value} variant={contractSystem === value ? "default" : "secondary"} aria-pressed={contractSystem === value} onClick={() => setContractSystem(value)}>{value === "realistic" ? "Realistic" : "Basic"}</Button>)}
         </div></div>}
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Input
-          placeholder="New career name (e.g. F1 2013 MyTeam)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && startNew()}
-        />
         <Button onClick={startNew} disabled={create.isPending}>
           <Plus className="mr-2 size-4" /> Start career
         </Button>
@@ -96,14 +86,14 @@ function CareersPage() {
         {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {careers?.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            No careers yet. Name one above and start your first pre-season.
+            No careers yet. Pick a mode above and start your first pre-season.
           </p>
         )}
         {careers?.map((c) => (
           <div key={c.id} className="panel flex items-center gap-4 p-4">
             <span
               className="h-10 w-1.5 rounded-full"
-              style={{ backgroundColor: c.data.team.colour || "#e10600" }}
+              style={{ backgroundColor: careerTeam(c.data, c.name).colour }}
             />
             <div className="min-w-0 flex-1">
               <Link
@@ -111,10 +101,10 @@ function CareersPage() {
                 params={{ careerId: c.id }}
                 className="headline block truncate text-xl hover:text-primary"
               >
-                {c.name}
+                {careerTeam(c.data, c.name).name}
               </Link>
               <p className="text-sm text-muted-foreground">
-                {c.data.mode === "driver" ? "Driver Career" : c.data.team.name || "MyTeam"} · Season {c.season} ·{" "}
+                {c.data.mode === "driver" ? "Driver Career" : "MyTeam"} · Season {c.season} ·{" "}
                 {STATE_LABEL[c.state] ?? c.state}
               </p>
             </div>
@@ -122,7 +112,7 @@ function CareersPage() {
               variant="ghost"
               size="icon"
               onClick={() => {
-                if (confirm(`Delete "${c.name}"? This cannot be undone.`)) remove.mutate(c.id);
+                if (confirm(`Delete "${careerTeam(c.data, c.name).name}"? This cannot be undone.`)) remove.mutate(c.id);
               }}
             >
               <Trash2 className="size-4" />
@@ -132,4 +122,18 @@ function CareersPage() {
       </div>
     </main>
   );
+}
+
+/** The card title and stripe: the team you run (MyTeam) or drive for (Driver Career). */
+function careerTeam(data: CareerData, fallback: string): { name: string; colour: string } {
+  if (data.mode === "driver") {
+    const season = data.seasons?.at(-1);
+    if (season?.playerTeamId) {
+      const t = seasonTeamInfo(data, season, season.playerTeamId);
+      return { name: t.name, colour: t.colour === "transparent" ? "#e10600" : t.colour };
+    }
+    const team = data.db?.teams?.find((t) => t.id === data.driverCareer?.teamId);
+    return team ? { name: team.name, colour: team.colour } : { name: "No team yet", colour: "#6b7280" };
+  }
+  return { name: data.team?.name || fallback || "New team", colour: data.team?.colour || "#e10600" };
 }
